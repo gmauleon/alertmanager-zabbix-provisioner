@@ -1,0 +1,21 @@
+# URL to the Status/Rules page
+# This will be replaced by the rules API endpoint when it will exists, see https://github.com/prometheus/prometheus/pull/2600
+rulesUrl: http://prometheus-server-here/prometheus/rules
+rulesPollingTime: 3600 # seconds
+
+
+# Informations to connect to the Zabbix API
+zabbixApiUrl: https://zabbix-server-here/zabbix/api_jsonrpc.php
+zabbixApiUser: Admin
+zabbixApiPassword: zabbix
+
+# Prefix of the keys to generated/update items 
+zabbixKeyPrefix: prometheus
+
+# Host that will be generated/updated
+zabbixHost: kubernetes-cluster-prometheus
+
+# Host groups for the generated host
+zabbixHostGroups:
+  - Kubernetes
+  - Prometheus
