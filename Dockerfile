@@ -9,4 +9,5 @@ COPY config.yaml /etc/provisioner
 RUN adduser provisioner -s /bin/false -D provisioner
 USER provisioner
 
-CMD ["/usr/bin/alertmanager-zabbix-provisioner", "-config", "/etc/provisioner/config.yaml"]
+ENTRYPOINT ["/usr/bin/alertmanager-zabbix-provisioner"]
+CMD ["-config", "/etc/provisioner/config.yaml"]

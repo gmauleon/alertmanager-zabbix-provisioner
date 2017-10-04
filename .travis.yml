@@ -1,0 +1,14 @@
+# Only build git tags
+branches:
+  only:
+    - /^v\d+\.\d+\.\d+$/
+
+language: go
+
+# Putting docker push here or the build will not fail
+script:
+  - make go-deps go-build docker-build
+  - docker tag alertmanager-zabbix-provisioner "$TRAVIS_REPO_SLUG":${TRAVIS_TAG#"v"}
+  - docker tag alertmanager-zabbix-provisioner "$TRAVIS_REPO_SLUG":latest
+  - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+  - docker push "$TRAVIS_REPO_SLUG"
