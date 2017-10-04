@@ -1,8 +1,8 @@
 package main
 
 import (
-	"alertmanager-zabbix-provisioner/provisioner"
 	"flag"
+	"github.com/gmauleon/alertmanager-zabbix-webhook/webhook"
 	"github.com/sirupsen/logrus"
 	"os"
 )
