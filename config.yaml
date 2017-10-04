@@ -1,13 +1,14 @@
 # URL to the Status/Rules page
 # This will be replaced by the rules API endpoint when it will exists, see https://github.com/prometheus/prometheus/pull/2600
 rulesUrl: http://prometheus-server-here/prometheus/rules
-rulesPollingTime: 3600 # seconds
+rulesPollingInterval: 3600 # seconds
 
 
 # Informations to connect to the Zabbix API
 zabbixApiUrl: https://zabbix-server-here/zabbix/api_jsonrpc.php
-zabbixApiUser: Admin
-zabbixApiPassword: zabbix
+zabbixApiCAFile: /etc/provisioner/ca.pem
+zabbixApiUser: user # This can also be set via the environment variable ZABBIX_API_USER
+zabbixApiPassword: password # This can also be set via the environment variable ZABBIX_API_PASSWORD
 
 # Prefix of the keys to generated/update items 
 zabbixKeyPrefix: prometheus

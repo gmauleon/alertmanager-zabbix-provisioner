@@ -1,11 +1,15 @@
 package provisioner
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"github.com/gmauleon/zabbix-client"
 	"github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"net/http"
+	"os"
 	"sort"
 	"time"
 )
@@ -18,18 +22,41 @@ type Provisioner struct {
 }
 
 type ProvisionerConfig struct {
-	RulesUrl          string   `yaml:"rulesUrl"`
-	RulesPollingTime  int      `yaml:"rulesPollingTime"`
-	ZabbixApiUrl      string   `yaml:"zabbixApiUrl"`
-	ZabbixApiUser     string   `yaml:"zabbixApiUser"`
-	ZabbixApiPassword string   `yaml:"zabbixApiPassword"`
-	ZabbixKeyPrefix   string   `yaml:"zabbixKeyPrefix"`
-	ZabbixHost        string   `yaml:"zabbixHost"`
-	ZabbixHostGroups  []string `yaml:"zabbixHostGroups"`
+	RulesUrl             string   `yaml:"rulesUrl"`
+	RulesPollingInterval int      `yaml:"rulesPollingTime"`
+	ZabbixApiUrl         string   `yaml:"zabbixApiUrl"`
+	ZabbixApiCAFile      string   `yaml:"zabbixApiCAFile"`
+	ZabbixApiUser        string   `yaml:"zabbixApiUser"`
+	ZabbixApiPassword    string   `yaml:"zabbixApiPassword"`
+	ZabbixKeyPrefix      string   `yaml:"zabbixKeyPrefix"`
+	ZabbixHost           string   `yaml:"zabbixHost"`
+	ZabbixHostGroups     []string `yaml:"zabbixHostGroups"`
 }
 
 func New(cfg *ProvisionerConfig) *Provisioner {
+
+	// Use the correct CA bundle if provided
+	transport := http.DefaultTransport
+	if len(cfg.ZabbixApiCAFile) != 0 {
+		// Add custom CA certificate
+		caCert, err := ioutil.ReadFile(cfg.ZabbixApiCAFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		caCertPool := x509.NewCertPool()
+		caCertPool.AppendCertsFromPEM(caCert)
+
+		tlsConfig := &tls.Config{}
+		tlsConfig.RootCAs = caCertPool
+		transport = &http.Transport{TLSClientConfig: tlsConfig}
+	}
+
 	api := zabbix.NewAPI(cfg.ZabbixApiUrl)
+	api.SetClient(&http.Client{
+		Transport: transport,
+	})
+
 	_, err := api.Login(cfg.ZabbixApiUser, cfg.ZabbixApiPassword)
 	if err != nil {
 		log.Fatal(err)
@@ -51,13 +78,13 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 
 	// Default values
 	config := ProvisionerConfig{
-		RulesUrl:          "https://127.0.0.1/prometheus/rules",
-		RulesPollingTime:  60,
-		ZabbixApiUrl:      "https://127.0.0.1/zabbix/p.Api.jsonrpc.php",
-		ZabbixApiUser:     "Admin",
-		ZabbixApiPassword: "zabbix",
-		ZabbixHost:        "alertmanager",
-		ZabbixKeyPrefix:   "prometheus",
+		RulesUrl:             "https://127.0.0.1/prometheus/rules",
+		RulesPollingInterval: 3600,
+		ZabbixApiUrl:         "https://127.0.0.1/zabbix/api_jsonrpc.php",
+		ZabbixApiUser:        "user",
+		ZabbixApiPassword:    "password",
+		ZabbixHost:           "kubernetes-cluster-prometheus",
+		ZabbixKeyPrefix:      "prometheus",
 		ZabbixHostGroups: []string{
 			"Kubernetes",
 			"Prometheus",
@@ -70,6 +97,18 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 	}
 
 	log.Info("Configuration loaded")
+
+	// If Environment variables are set of user and pass, use those instead
+	zabbixApiUser, ok := os.LookupEnv("ZABBIX_API_USER")
+	if ok {
+		config.ZabbixApiUser = zabbixApiUser
+	}
+
+	zabbixApiPassword, ok := os.LookupEnv("ZABBIX_API_PASSWORD")
+	if ok {
+		config.ZabbixApiPassword = zabbixApiPassword
+	}
+
 	return &config, nil
 }
 
@@ -98,7 +137,7 @@ func (p *Provisioner) Start() {
 		existingItems := p.getItemsFromZabbixItems(host, zabbixItems)
 		p.syncItems(wantedItems, existingItems)
 
-		time.Sleep(time.Duration(p.RulesPollingTime) * time.Second)
+		time.Sleep(time.Duration(p.RulesPollingInterval) * time.Second)
 	}
 }
 
@@ -163,31 +202,33 @@ func (p *Provisioner) createHost(hg zabbix.HostGroups) zabbix.Host {
 		return existingHosts[0]
 	}
 
-	newHost := zabbix.Host{
-		Host:      p.ZabbixHost,
-		Available: 1,
-		Name:      p.ZabbixHost,
-		Status:    0,
-		GroupIds:  hostGroupIds(hg),
-		Interfaces: zabbix.HostInterfaces{
-			zabbix.HostInterface{
-				DNS:   "",
-				IP:    "127.0.0.1",
-				Main:  1,
-				Port:  "10050",
-				Type:  1,
-				UseIP: 1,
+	newHosts := zabbix.Hosts{
+		zabbix.Host{
+			Host:      p.ZabbixHost,
+			Available: 1,
+			Name:      p.ZabbixHost,
+			Status:    0,
+			GroupIds:  hostGroupIds(hg),
+			Interfaces: zabbix.HostInterfaces{
+				zabbix.HostInterface{
+					DNS:   "",
+					IP:    "127.0.0.1",
+					Main:  1,
+					Port:  "10050",
+					Type:  1,
+					UseIP: 1,
+				},
 			},
 		},
 	}
 
-	err = p.Api.HostsCreate(zabbix.Hosts{newHost})
+	err = p.Api.HostsCreate(newHosts)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	log.Info("Host created")
-	return newHost
+	return newHosts[0]
 }
 
 func (p *Provisioner) getItemsFromPrometheusRules(host zabbix.Host, rules []PrometheusRule) Items {
@@ -284,11 +325,11 @@ func (p *Provisioner) syncItems(wantedItems Items, existingItems Items) {
 		}
 		err := p.Api.ItemsCreate(itemsToCreate.Items())
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Problem while creating items: %s", err)
 		}
 		err = p.Api.TriggersCreate(itemsToCreate.Triggers())
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("Problem while creating triggers: %s", err)
 		}
 	} else {
 		log.Info("Nothing to create")
