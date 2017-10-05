@@ -8,6 +8,7 @@ Data for those items can then be sent via a webhook: https://github.com/gmauleon
 ## Howto
 
 Have a look at the default [config.yaml](https://github.com/gmauleon/alertmanager-zabbix-provisioner/blob/master/config.yaml) for the possible parameters  
+Kubernetes examples manifests can be found here: https://github.com/gmauleon/alertmanager-zabbix-webhook/tree/master/contrib/kubernetes  
 
 To create a corresponding item/trigger in Zabbix, your prometheus rule need to have at least a `zabbix` annotation:
 ```
