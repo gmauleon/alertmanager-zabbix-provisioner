@@ -92,6 +92,9 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 			"Kubernetes",
 			"Prometheus",
 		},
+		ZabbixItemDefaultHistory:      "7d",
+		ZabbixItemDefaultTrends:       "90d",
+		ZabbixItemDefaultTrapperHosts: "0.0.0.0/32",
 	}
 
 	err = yaml.Unmarshal(configFile, &config)
