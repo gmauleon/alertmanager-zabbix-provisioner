@@ -1,13 +1,35 @@
-rulesUrl: http://prometheus-server-here/prometheus/rules        # URL to the Status/Rules page
-rulesPollingInterval: 3600                                      # Polling interval in seconds
+# URL to the Status/Rules page
+rulesUrl: http://prometheus-server-here/rules
 
-zabbixApiUrl: https://zabbix-server-here/zabbix/api_jsonrpc.php # Full URL to your Zabbix API
-zabbixApiCAFile: /etc/provisioner/ca.pem                        # If your Zabbix server use internal certificates, you can provide a CA bundle for your company (or leave it blank)
-zabbixApiUser: user                                             # This can also be set via the environment variable ZABBIX_API_USER
-zabbixApiPassword: password                                     # This can also be set via the environment variable ZABBIX_API_PASSWORD
+# Polling interval in seconds
+rulesPollingInterval: 3600
 
-zabbixKeyPrefix: prometheus                                     # Items key prefix, keys will be zabbixKeyPrefix.alertname
-zabbixHost: kubernetes-cluster-prometheus                       # Name of the host that will be create
-zabbixHostGroups:                                               # List of host groups for the generated host
+# Full URL to your Zabbix API
+zabbixApiUrl: https://zabbix-server-here/zabbix/api_jsonrpc.php
+
+# If your Zabbix server use internal certificates, you can provide a CA bundle for your company (or leave it blank)
+zabbixApiCAFile: /etc/provisioner/ca.pem
+
+# This can also be set via the environment variable ZABBIX_API_USER
+zabbixApiUser: user
+
+# This can also be set via the environment variable ZABBIX_API_PASSWORD
+zabbixApiPassword: password
+
+# Items key prefix, keys will be zabbixKeyPrefix.alertname
+zabbixKeyPrefix: prometheus
+
+# Name of the host that will be created
+zabbixHost: kubernetes-cluster-prometheus
+
+# List of host groups for the generated host
+zabbixHostGroups:
   - Kubernetes
   - Prometheus
+
+# For zabbix 2.x you have to put those in days like 7 or 90
+zabbixItemDefaultHistory: 7d
+zabbixItemDefaultTrends: 90d
+
+# Hosts permitted to send data (your webhook external CIDR, default is from everywhere)
+zabbixItemDefaultTrapperHosts: 0.0.0.0/32

@@ -68,7 +68,7 @@ func (i Item) Compare(j Item) (resultName int, resultOther bool) {
 	return 0, true
 }
 
-func NewFromPrometheusRule(host zabbix.Host, rule PrometheusRule) *Item {
+func NewFromPrometheusRule(rule PrometheusRule, host zabbix.Host, history string, trends string, trapperHosts string) *Item {
 	key := fmt.Sprintf("prometheus.%s", strings.ToLower(rule.Name))
 
 	newItem := Item{
@@ -78,9 +78,9 @@ func NewFromPrometheusRule(host zabbix.Host, rule PrometheusRule) *Item {
 			HostId:       host.HostId,
 			Type:         2, //Trapper
 			ValueType:    3,
-			History:      "7d",  // 7 for v2
-			Trends:       "90d", // 90 for v2
-			TrapperHosts: "0.0.0.0/32",
+			History:      history,
+			Trends:       trends,
+			TrapperHosts: trapperHosts,
 		},
 		Trigger: zabbix.Trigger{
 			Description: rule.Name,
@@ -111,6 +111,8 @@ func NewFromPrometheusRule(host zabbix.Host, rule PrometheusRule) *Item {
 			newItem.Item.History = v
 		case "zabbix_trend":
 			newItem.Item.Trends = v
+		case "zabbix_trapper_hosts":
+			newItem.Item.TrapperHosts = v
 		case "summary":
 			// Trigger name is called description in Zabbix API
 			if _, ok := rule.Annotations["zabbix_trigger_name"]; !ok {

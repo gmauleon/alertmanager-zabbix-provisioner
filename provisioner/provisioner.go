@@ -22,15 +22,18 @@ type Provisioner struct {
 }
 
 type ProvisionerConfig struct {
-	RulesUrl             string   `yaml:"rulesUrl"`
-	RulesPollingInterval int      `yaml:"rulesPollingTime"`
-	ZabbixApiUrl         string   `yaml:"zabbixApiUrl"`
-	ZabbixApiCAFile      string   `yaml:"zabbixApiCAFile"`
-	ZabbixApiUser        string   `yaml:"zabbixApiUser"`
-	ZabbixApiPassword    string   `yaml:"zabbixApiPassword"`
-	ZabbixKeyPrefix      string   `yaml:"zabbixKeyPrefix"`
-	ZabbixHost           string   `yaml:"zabbixHost"`
-	ZabbixHostGroups     []string `yaml:"zabbixHostGroups"`
+	RulesUrl                      string   `yaml:"rulesUrl"`
+	RulesPollingInterval          int      `yaml:"rulesPollingTime"`
+	ZabbixApiUrl                  string   `yaml:"zabbixApiUrl"`
+	ZabbixApiCAFile               string   `yaml:"zabbixApiCAFile"`
+	ZabbixApiUser                 string   `yaml:"zabbixApiUser"`
+	ZabbixApiPassword             string   `yaml:"zabbixApiPassword"`
+	ZabbixKeyPrefix               string   `yaml:"zabbixKeyPrefix"`
+	ZabbixHost                    string   `yaml:"zabbixHost"`
+	ZabbixHostGroups              []string `yaml:"zabbixHostGroups"`
+	ZabbixItemDefaultHistory      string   `yaml:"zabbixItemDefaultHistory"`
+	ZabbixItemDefaultTrends       string   `yaml:"zabbixItemDefaultTrends"`
+	ZabbixItemDefaultTrapperHosts string   `yaml:"zabbixItemDefaultTrapperHosts"`
 }
 
 func New(cfg *ProvisionerConfig) *Provisioner {
@@ -98,7 +101,7 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 
 	log.Info("Configuration loaded")
 
-	// If Environment variables are set of user and pass, use those instead
+	// If Environment variables are set for zabbix user and password, use those instead
 	zabbixApiUser, ok := os.LookupEnv("ZABBIX_API_USER")
 	if ok {
 		config.ZabbixApiUser = zabbixApiUser
@@ -235,7 +238,7 @@ func (p *Provisioner) getItemsFromPrometheusRules(host zabbix.Host, rules []Prom
 	var items Items
 	for _, r := range rules {
 		if _, ok := r.Annotations["zabbix"]; ok {
-			item := NewFromPrometheusRule(host, r)
+			item := NewFromPrometheusRule(r, host, p.ZabbixItemDefaultHistory, p.ZabbixItemDefaultTrends, p.ZabbixItemDefaultTrapperHosts)
 			items = append(items, *item)
 			log.Infof("Item from Prometheus: %s", item.Item.Name)
 		}
