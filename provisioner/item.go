@@ -35,6 +35,10 @@ func (i Item) Compare(j Item) (resultName int, resultOther bool) {
 		return 0, false
 	}
 
+	if i.Item.TrapperHosts != j.Item.TrapperHosts {
+		return 0, false
+	}
+
 	// Trigger comparison
 	if i.Trigger.Description != j.Trigger.Description {
 		return 0, false
