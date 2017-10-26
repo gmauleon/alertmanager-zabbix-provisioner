@@ -1,145 +1,358 @@
 package provisioner
 
 import (
-	"fmt"
-	"github.com/gmauleon/zabbix-client"
+	"github.com/gmauleon/alertmanager-zabbix-provisioner/zabbix"
+	log "github.com/sirupsen/logrus"
 	"strings"
 )
 
-type Items []Item
+type State int
 
-type Item struct {
-	Item         zabbix.Item
-	Applications zabbix.Applications
-	Trigger      zabbix.Trigger
+const (
+	StateNew State = iota
+	StateUpdated
+	StateEqual
+	StateOld
+)
+
+var StateName = map[State]string{
+	StateNew:     "New",
+	StateUpdated: "Updated",
+	StateEqual:   "Equal",
+	StateOld:     "Old",
 }
 
-func (i Item) Compare(j Item) (resultName int, resultOther bool) {
-	if i.Item.Name < j.Item.Name {
-		return -1, false
+type CustomApplication struct {
+	State State
+	zabbix.Application
+}
+
+type CustomTrigger struct {
+	State State
+	zabbix.Trigger
+}
+
+type CustomHostGroup struct {
+	State State
+	zabbix.HostGroup
+}
+
+type CustomItem struct {
+	State State
+	zabbix.Item
+	Applications map[string]struct{}
+}
+
+type CustomHost struct {
+	State State
+	zabbix.Host
+	HostGroups   map[string]struct{}
+	Applications map[string]*CustomApplication
+	Items        map[string]*CustomItem
+	Triggers     map[string]*CustomTrigger
+}
+
+type CustomZabbix struct {
+	Hosts      map[string]*CustomHost
+	HostGroups map[string]*CustomHostGroup
+}
+
+func NewCustomZabbix() *CustomZabbix {
+	return &CustomZabbix{
+		Hosts:      map[string]*CustomHost{},
+		HostGroups: map[string]*CustomHostGroup{},
+	}
+}
+
+func (z *CustomZabbix) AddHost(host *CustomHost) (updatedHost *CustomHost) {
+
+	updatedHost = host
+
+	if existing, ok := z.Hosts[host.Name]; ok {
+		if existing.Equal(host) {
+			if host.State == StateOld {
+				existing.HostId = host.HostId
+				existing.State = StateEqual
+				updatedHost = existing
+			}
+		} else {
+			if host.State == StateOld {
+				existing.HostId = host.HostId
+			}
+			existing.State = StateUpdated
+			updatedHost = existing
+		}
 	}
 
-	if i.Item.Name > j.Item.Name {
-		return 1, false
+	z.Hosts[host.Name] = updatedHost
+	return updatedHost
+}
+
+func (host *CustomHost) AddItem(item *CustomItem) {
+
+	updatedItem := item
+
+	if existing, ok := host.Items[item.Key]; ok {
+		if existing.Equal(item) {
+			if item.State == StateOld {
+				existing.ItemId = item.ItemId
+				existing.State = StateEqual
+				updatedItem = existing
+			}
+		} else {
+			if item.State == StateOld {
+				existing.ItemId = item.ItemId
+			}
+			existing.State = StateUpdated
+			updatedItem = existing
+		}
 	}
 
-	if i.Item.Description != j.Item.Description {
-		return 0, false
+	host.Items[item.Key] = updatedItem
+}
+
+func (host *CustomHost) AddTrigger(trigger *CustomTrigger) {
+
+	updatedTrigger := trigger
+
+	if existing, ok := host.Triggers[trigger.Expression]; ok {
+		if existing.Equal(trigger) {
+			if trigger.State == StateOld {
+				existing.TriggerId = trigger.TriggerId
+				existing.State = StateEqual
+				updatedTrigger = existing
+			}
+		} else {
+			if trigger.State == StateOld {
+				existing.TriggerId = trigger.TriggerId
+			}
+			existing.State = StateUpdated
+			updatedTrigger = existing
+		}
 	}
 
-	if i.Item.Trends != j.Item.Trends {
-		return 0, false
+	host.Triggers[trigger.Expression] = updatedTrigger
+}
+
+func (host *CustomHost) AddApplication(application *CustomApplication) {
+
+	if _, ok := host.Applications[application.Name]; ok {
+		if application.State == StateOld {
+			application.State = StateEqual
+		}
+	}
+	host.Applications[application.Name] = application
+}
+
+func (z *CustomZabbix) AddHostGroup(hostGroup *CustomHostGroup) {
+
+	if _, ok := z.HostGroups[hostGroup.Name]; ok {
+		if hostGroup.State == StateOld {
+			hostGroup.State = StateEqual
+		}
+	}
+	z.HostGroups[hostGroup.Name] = hostGroup
+}
+
+func (i *CustomHost) Equal(j *CustomHost) bool {
+	if i.Name != j.Name {
+		return false
 	}
 
-	if i.Item.History != j.Item.History {
-		return 0, false
+	if len(i.HostGroups) != len(j.HostGroups) {
+		return false
 	}
 
-	// Trigger comparison
-	if i.Trigger.Description != j.Trigger.Description {
-		return 0, false
+	for hostGroupName, _ := range i.HostGroups {
+		if _, ok := j.HostGroups[hostGroupName]; !ok {
+			return false
+		}
 	}
 
-	if i.Trigger.Priority != j.Trigger.Priority {
-		return 0, false
+	if len(i.Inventory) != len(j.Inventory) {
+		return false
 	}
 
-	if i.Trigger.Comments != j.Trigger.Comments {
-		return 0, false
+	for key, valueI := range i.Inventory {
+		if valueJ, ok := j.Inventory[key]; !ok {
+			return false
+		} else if valueJ != valueI {
+			return false
+		}
+	}
+
+	return true
+}
+
+func (i *CustomItem) Equal(j *CustomItem) bool {
+	if i.Name != j.Name {
+		return false
+	}
+
+	if i.Description != j.Description {
+		return false
+	}
+
+	if i.Trends != j.Trends {
+		return false
+	}
+
+	if i.History != j.History {
+		return false
+	}
+
+	if i.TrapperHosts != j.TrapperHosts {
+		return false
 	}
 
 	if len(i.Applications) != len(j.Applications) {
-		return 0, false
+		return false
 	}
 
-	for _, ia := range i.Applications {
-		found := false
-		for _, ja := range j.Applications {
-			if ia.Name == ja.Name {
-				found = true
-				break
-			}
-		}
-		if found == false {
-			return 0, false
+	for appName, _ := range i.Applications {
+		if _, ok := j.Applications[appName]; !ok {
+			return false
 		}
 	}
 
-	return 0, true
+	return true
 }
 
-func NewFromPrometheusRule(rule PrometheusRule, host zabbix.Host, history string, trends string, trapperHosts string) *Item {
-	key := fmt.Sprintf("prometheus.%s", strings.ToLower(rule.Name))
-
-	newItem := Item{
-		Item: zabbix.Item{
-			Name:         rule.Name,
-			Key:          key,
-			HostId:       host.HostId,
-			Type:         2, //Trapper
-			ValueType:    3,
-			History:      history,
-			Trends:       trends,
-			TrapperHosts: trapperHosts,
-		},
-		Trigger: zabbix.Trigger{
-			Description: rule.Name,
-			Expression:  fmt.Sprintf("{%s:%s.last()}<>0", host.Name, key),
-		},
+func (i *CustomTrigger) Equal(j *CustomTrigger) bool {
+	if i.Expression != j.Expression {
+		return false
 	}
 
-	for k, v := range rule.Annotations {
-		switch k {
-		case "zabbix_application":
-			newItem.Applications = zabbix.Applications{
-				zabbix.Application{
-					Name: v,
-				},
-			}
-		case "description":
-			if _, ok := rule.Annotations["zabbix_description"]; !ok {
-				newItem.Item.Description = v
-			}
-
-			// Description is called Comments in Zabbix API
-			if _, ok := rule.Annotations["zabbix_trigger_description"]; !ok {
-				newItem.Trigger.Comments = v
-			}
-		case "zabbix_description":
-			newItem.Item.Description = v
-		case "zabbix_history":
-			newItem.Item.History = v
-		case "zabbix_trend":
-			newItem.Item.Trends = v
-		case "zabbix_trapper_hosts":
-			newItem.Item.TrapperHosts = v
-		case "summary":
-			// Trigger name is called description in Zabbix API
-			if _, ok := rule.Annotations["zabbix_trigger_name"]; !ok {
-				newItem.Trigger.Description = v
-			}
-		case "zabbix_trigger_name":
-			newItem.Trigger.Description = v
-		case "zabbix_trigger_description":
-			newItem.Trigger.Comments = v
-		case "zabbix_trigger_severity":
-			newItem.Trigger.Priority = GetZabbixPriority(v)
-		default:
-			continue
-		}
+	if i.Description != j.Description {
+		return false
 	}
 
-	return &newItem
+	if i.Priority != j.Priority {
+		return false
+	}
+
+	if i.Comments != j.Comments {
+		return false
+	}
+
+	return true
 }
 
-func NewFromZabbixItem(i zabbix.Item, a zabbix.Applications, t zabbix.Trigger) *Item {
-	newItem := Item{
-		Item:         i,
-		Applications: a,
-		Trigger:      t,
+func (z *CustomZabbix) GetHostsByState() (hostByState map[State]zabbix.Hosts) {
+
+	hostByState = map[State]zabbix.Hosts{
+		StateNew:     zabbix.Hosts{},
+		StateOld:     zabbix.Hosts{},
+		StateUpdated: zabbix.Hosts{},
+		StateEqual:   zabbix.Hosts{},
 	}
 
-	return &newItem
+	for _, host := range z.Hosts {
+		for hostGroupName, _ := range host.HostGroups {
+			host.GroupIds = append(host.GroupIds, zabbix.HostGroupId{GroupId: z.HostGroups[hostGroupName].GroupId})
+		}
+		hostByState[host.State] = append(hostByState[host.State], host.Host)
+		log.Infof("GetHostByState = State: %s, Name: %s", StateName[host.State], host.Name)
+	}
+
+	return
+}
+
+func (z *CustomZabbix) GetHostGroupsByState() (hostGroupsByState map[State]zabbix.HostGroups) {
+
+	hostGroupsByState = map[State]zabbix.HostGroups{
+		StateNew:     zabbix.HostGroups{},
+		StateOld:     zabbix.HostGroups{},
+		StateUpdated: zabbix.HostGroups{},
+		StateEqual:   zabbix.HostGroups{},
+	}
+
+	for _, hostGroup := range z.HostGroups {
+		hostGroupsByState[hostGroup.State] = append(hostGroupsByState[hostGroup.State], hostGroup.HostGroup)
+		log.Infof("GetHostGroupsByState = State: %s, Name: %s", StateName[hostGroup.State], hostGroup.Name)
+	}
+
+	return
+}
+
+func (zabbix *CustomZabbix) PropagateCreatedHosts(hosts zabbix.Hosts) {
+	for _, newHost := range hosts {
+		if host, ok := zabbix.Hosts[newHost.Name]; ok {
+			host.HostId = newHost.HostId
+		}
+	}
+}
+
+func (zabbix *CustomZabbix) PropagateCreatedHostGroups(hostGroups zabbix.HostGroups) {
+	for _, newHostGroup := range hostGroups {
+		if hostGroup, ok := zabbix.HostGroups[newHostGroup.Name]; ok {
+			hostGroup.GroupId = newHostGroup.GroupId
+		}
+	}
+}
+
+func (host *CustomHost) PropagateCreatedApplications(applications zabbix.Applications) {
+
+	for _, application := range applications {
+		host.Applications[application.Name].ApplicationId = application.ApplicationId
+	}
+}
+
+func (host *CustomHost) GetItemsByState() (itemsByState map[State]zabbix.Items) {
+
+	itemsByState = map[State]zabbix.Items{
+		StateNew:     zabbix.Items{},
+		StateOld:     zabbix.Items{},
+		StateUpdated: zabbix.Items{},
+		StateEqual:   zabbix.Items{},
+	}
+
+	for _, item := range host.Items {
+		item.HostId = host.HostId
+		item.Item.ApplicationIds = []string{}
+		for appName, _ := range item.Applications {
+			item.Item.ApplicationIds = append(item.Item.ApplicationIds, host.Applications[appName].ApplicationId)
+		}
+		itemsByState[item.State] = append(itemsByState[item.State], item.Item)
+		log.Infof("GetItemsByState = State: %s, Key: %s, Applications: %+v", StateName[item.State], item.Key, item.Applications)
+	}
+
+	return
+}
+
+func (host *CustomHost) GetTriggersByState() (triggersByState map[State]zabbix.Triggers) {
+
+	triggersByState = map[State]zabbix.Triggers{
+		StateNew:     zabbix.Triggers{},
+		StateOld:     zabbix.Triggers{},
+		StateUpdated: zabbix.Triggers{},
+		StateEqual:   zabbix.Triggers{},
+	}
+
+	for _, trigger := range host.Triggers {
+		triggersByState[trigger.State] = append(triggersByState[trigger.State], trigger.Trigger)
+		log.Infof("GetTriggersByState = State: %s, Expression: %s", StateName[trigger.State], trigger.Expression)
+	}
+
+	return
+}
+
+func (host *CustomHost) GetApplicationsByState() (applicationsByState map[State]zabbix.Applications) {
+
+	applicationsByState = map[State]zabbix.Applications{
+		StateNew:     zabbix.Applications{},
+		StateOld:     zabbix.Applications{},
+		StateUpdated: zabbix.Applications{},
+		StateEqual:   zabbix.Applications{},
+	}
+
+	for _, application := range host.Applications {
+		application.Application.HostId = host.HostId
+		applicationsByState[application.State] = append(applicationsByState[application.State], application.Application)
+		log.Infof("GetApplicationsByState = State: %s, Name: %s", StateName[application.State], application.Name)
+	}
+
+	return
 }
 
 func GetZabbixPriority(severity string) zabbix.PriorityType {
@@ -158,26 +371,4 @@ func GetZabbixPriority(severity string) zabbix.PriorityType {
 	default:
 		return zabbix.NotClassified
 	}
-}
-
-func (z Items) Len() int      { return len(z) }
-func (z Items) Swap(i, j int) { z[i], z[j] = z[j], z[i] }
-func (z Items) Less(i, j int) bool {
-	return z[i].Item.Name < z[j].Item.Name
-}
-
-func (z Items) Items() zabbix.Items {
-	items := zabbix.Items{}
-	for _, i := range z {
-		items = append(items, i.Item)
-	}
-	return items
-}
-
-func (z Items) Triggers() zabbix.Triggers {
-	triggers := zabbix.Triggers{}
-	for _, i := range z {
-		triggers = append(triggers, i.Trigger)
-	}
-	return triggers
 }

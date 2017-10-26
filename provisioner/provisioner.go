@@ -4,36 +4,44 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
-	"github.com/gmauleon/zabbix-client"
-	"github.com/sirupsen/logrus"
+	"github.com/gmauleon/alertmanager-zabbix-provisioner/zabbix"
+	log "github.com/sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"sort"
+	"strings"
 	"time"
 )
 
-var log = logrus.WithField("context", "provisioner")
-
 type Provisioner struct {
-	Api *zabbix.API
-	ProvisionerConfig
+	Api    *zabbix.API
+	Config ProvisionerConfig
+	*CustomZabbix
 }
 
 type ProvisionerConfig struct {
-	RulesUrl                      string   `yaml:"rulesUrl"`
-	RulesPollingInterval          int      `yaml:"rulesPollingTime"`
-	ZabbixApiUrl                  string   `yaml:"zabbixApiUrl"`
-	ZabbixApiCAFile               string   `yaml:"zabbixApiCAFile"`
-	ZabbixApiUser                 string   `yaml:"zabbixApiUser"`
-	ZabbixApiPassword             string   `yaml:"zabbixApiPassword"`
-	ZabbixKeyPrefix               string   `yaml:"zabbixKeyPrefix"`
-	ZabbixHost                    string   `yaml:"zabbixHost"`
-	ZabbixHostGroups              []string `yaml:"zabbixHostGroups"`
-	ZabbixItemDefaultHistory      string   `yaml:"zabbixItemDefaultHistory"`
-	ZabbixItemDefaultTrends       string   `yaml:"zabbixItemDefaultTrends"`
-	ZabbixItemDefaultTrapperHosts string   `yaml:"zabbixItemDefaultTrapperHosts"`
+	RulesUrl             string `yaml:"rulesUrl"`
+	RulesPollingInterval int    `yaml:"rulesPollingTime"`
+
+	ZabbixApiUrl      string       `yaml:"zabbixApiUrl"`
+	ZabbixApiCAFile   string       `yaml:"zabbixApiCAFile"`
+	ZabbixApiUser     string       `yaml:"zabbixApiUser"`
+	ZabbixApiPassword string       `yaml:"zabbixApiPassword"`
+	ZabbixKeyPrefix   string       `yaml:"zabbixKeyPrefix"`
+	ZabbixHosts       []HostConfig `yaml:"zabbixHosts"`
+}
+
+type HostConfig struct {
+	Name                    string            `yaml:"name"`
+	Selector                map[string]string `yaml:"selector"`
+	HostGroups              []string          `yaml:"hostGroups"`
+	Tag                     string            `yaml:"tag"`
+	DeploymentStatus        string            `yaml:"deploymentStatus"`
+	ItemDefaultApplication  string            `yaml:"itemDefaultApplication"`
+	ItemDefaultHistory      string            `yaml:"itemDefaultHistory"`
+	ItemDefaultTrends       string            `yaml:"itemDefaultTrends"`
+	ItemDefaultTrapperHosts string            `yaml:"itemDefaultTrapperHosts"`
 }
 
 func New(cfg *ProvisionerConfig) *Provisioner {
@@ -44,7 +52,7 @@ func New(cfg *ProvisionerConfig) *Provisioner {
 		// Add custom CA certificate
 		caCert, err := ioutil.ReadFile(cfg.ZabbixApiCAFile)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalln("error while reading Zabbix CA: ", err)
 		}
 
 		caCertPool := x509.NewCertPool()
@@ -62,21 +70,21 @@ func New(cfg *ProvisionerConfig) *Provisioner {
 
 	_, err := api.Login(cfg.ZabbixApiUser, cfg.ZabbixApiPassword)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalln("error while login to Zabbix:", err)
 	}
 
 	return &Provisioner{
-		Api:               api,
-		ProvisionerConfig: *cfg,
+		Api:    api,
+		Config: *cfg,
 	}
 
 }
 
 func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
-	log.Infof("Loading configuration at '%s'", filename)
+	log.Infof("loading configuration at '%s'", filename)
 	configFile, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return nil, fmt.Errorf("Can't open the config file: %s", err)
+		return nil, fmt.Errorf("can't open the config file: %s", err)
 	}
 
 	// Default values
@@ -86,23 +94,16 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 		ZabbixApiUrl:         "https://127.0.0.1/zabbix/api_jsonrpc.php",
 		ZabbixApiUser:        "user",
 		ZabbixApiPassword:    "password",
-		ZabbixHost:           "kubernetes-cluster-prometheus",
 		ZabbixKeyPrefix:      "prometheus",
-		ZabbixHostGroups: []string{
-			"Kubernetes",
-			"Prometheus",
-		},
-		ZabbixItemDefaultHistory:      "7d",
-		ZabbixItemDefaultTrends:       "90d",
-		ZabbixItemDefaultTrapperHosts: "0.0.0.0/32",
+		ZabbixHosts:          []HostConfig{},
 	}
 
 	err = yaml.Unmarshal(configFile, &config)
 	if err != nil {
-		return nil, fmt.Errorf("Can't read the config file: %s", err)
+		return nil, fmt.Errorf("can't read the config file: %s", err)
 	}
 
-	log.Info("Configuration loaded")
+	log.Info("configuration loaded")
 
 	// If Environment variables are set for zabbix user and password, use those instead
 	zabbixApiUser, ok := os.LookupEnv("ZABBIX_API_USER")
@@ -122,231 +123,484 @@ func (p *Provisioner) Start() {
 
 	for {
 
-		rules := GetRulesFromURL(p.RulesUrl)
 		// TODO
 		// TODO: Compare rules and do something only if there is some changes
 		// TODO
 
-		hostGroups := p.createHostGroups()
-		host := p.createHost(hostGroups)
+		p.CustomZabbix = NewCustomZabbix()
 
-		zabbixItems, err := p.Api.ItemsGet(zabbix.Params{
-			"output":  "extend",
-			"hostids": host.HostId,
-		})
+		p.FillFromPrometheus()
+		p.FillFromZabbix()
+		p.ApplyChanges()
 
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		wantedItems := p.getItemsFromPrometheusRules(host, rules)
-		existingItems := p.getItemsFromZabbixItems(host, zabbixItems)
-		p.syncItems(wantedItems, existingItems)
-
-		time.Sleep(time.Duration(p.RulesPollingInterval) * time.Second)
+		time.Sleep(time.Duration(p.Config.RulesPollingInterval) * time.Second)
 	}
 }
 
-func (p *Provisioner) createHostGroups() zabbix.HostGroups {
+// Check if a prometheus rule has all the key/value pair declared in the selector configuration for a host
+func (p *Provisioner) IsMatching(config HostConfig, rule PrometheusRule) bool {
 
-	// Get exising hot groups from Zabbix
-	existingHostGroups, err := p.Api.HostGroupsGet(zabbix.Params{
-		"output": "extend",
-		"filter": map[string][]string{
-			"name": p.ZabbixHostGroups,
-		},
-	})
-
-	if err != nil {
-		log.Fatal(err)
+	if len(config.Selector) == 0 {
+		return false
 	}
 
-	if len(existingHostGroups) == len(p.ZabbixHostGroups) {
-		log.Info("Host Groups exists")
-		return existingHostGroups
-	}
-
-	newHostGroups := zabbix.HostGroups{}
-	for _, name := range p.ZabbixHostGroups {
-		found := false
-		for _, h := range existingHostGroups {
-			if h.Name == name {
-				found = true
-				break
+	for hostKey, hostValue := range config.Selector {
+		if ruleValue, ok := rule.Annotations[hostKey]; ok {
+			if hostValue != ruleValue {
+				return false
 			}
-		}
-
-		if !found {
-			newHostGroups = append(newHostGroups, zabbix.HostGroup{Name: name})
+		} else {
+			return false
 		}
 	}
-
-	// Create missing host groups
-	err = p.Api.HostGroupsCreate(newHostGroups)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	log.Info("Host Groups created")
-	return append(existingHostGroups, newHostGroups...)
+	return true
 }
 
-func (p *Provisioner) createHost(hg zabbix.HostGroups) zabbix.Host {
+// Create hosts structures and populate them from Prometheus rules
+func (p *Provisioner) FillFromPrometheus() {
 
-	existingHosts, err := p.Api.HostsGet(zabbix.Params{
-		"output": "extend",
-		"filter": map[string]string{
-			"host": p.ZabbixHost,
-		},
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	rules := GetRulesFromURL(p.Config.RulesUrl)
 
-	if len(existingHosts) != 0 {
-		log.Info("Host exists")
-		return existingHosts[0]
-	}
+	for _, hostConfig := range p.Config.ZabbixHosts {
 
-	newHosts := zabbix.Hosts{
-		zabbix.Host{
-			Host:      p.ZabbixHost,
-			Available: 1,
-			Name:      p.ZabbixHost,
-			Status:    0,
-			GroupIds:  hostGroupIds(hg),
-			Interfaces: zabbix.HostInterfaces{
-				zabbix.HostInterface{
-					DNS:   "",
-					IP:    "127.0.0.1",
-					Main:  1,
-					Port:  "10050",
-					Type:  1,
-					UseIP: 1,
+		// Create an internal host object
+		newHost := &CustomHost{
+			State: StateNew,
+			Host: zabbix.Host{
+				Host:          hostConfig.Name,
+				Available:     1,
+				Name:          hostConfig.Name,
+				Status:        0,
+				InventoryMode: zabbix.InventoryManual,
+				Inventory: map[string]string{
+					"deployment_status": hostConfig.DeploymentStatus,
+					"tag":               hostConfig.Tag,
+				},
+				Interfaces: zabbix.HostInterfaces{
+					zabbix.HostInterface{
+						DNS:   "",
+						IP:    "127.0.0.1",
+						Main:  1,
+						Port:  "10050",
+						Type:  1,
+						UseIP: 1,
+					},
 				},
 			},
-		},
+			HostGroups:   make(map[string]struct{}, len(hostConfig.HostGroups)),
+			Items:        map[string]*CustomItem{},
+			Applications: map[string]*CustomApplication{},
+			Triggers:     map[string]*CustomTrigger{},
+		}
+
+		// Create host groups from the configuration file and link them to this host
+		for _, hostGroupName := range hostConfig.HostGroups {
+			p.AddHostGroup(&CustomHostGroup{
+				State: StateNew,
+				HostGroup: zabbix.HostGroup{
+					Name: hostGroupName,
+				},
+			})
+
+			newHost.HostGroups[hostGroupName] = struct{}{}
+		}
+
+		// Parse Prometheus rules and create corresponding items/triggers and applications for this host
+		for _, rule := range rules {
+
+			if !p.IsMatching(hostConfig, rule) {
+				continue
+			}
+
+			key := fmt.Sprintf("prometheus.%s", strings.ToLower(rule.Name))
+
+			newItem := &CustomItem{
+				State: StateNew,
+				Item: zabbix.Item{
+					Name:         rule.Name,
+					Key:          key,
+					HostId:       "", //To be filled when the host will be created
+					Type:         2,  //Trapper
+					ValueType:    3,
+					History:      hostConfig.ItemDefaultHistory,
+					Trends:       hostConfig.ItemDefaultTrends,
+					TrapperHosts: hostConfig.ItemDefaultTrapperHosts,
+				},
+				Applications: map[string]struct{}{},
+			}
+
+			newTrigger := &CustomTrigger{
+				State: StateNew,
+				Trigger: zabbix.Trigger{
+					Description: rule.Name,
+					Expression:  fmt.Sprintf("{%s:%s.last()}<>0", newHost.Name, key),
+				},
+			}
+
+			for k, v := range rule.Annotations {
+				switch k {
+				case "zabbix_applications":
+
+					// List of applications separated by comma
+					applicationNames := strings.Split(v, ",")
+					for _, applicationName := range applicationNames {
+						newApplication := &CustomApplication{
+							State: StateNew,
+							Application: zabbix.Application{
+								Name: applicationName,
+							},
+						}
+
+						newHost.AddApplication(newApplication)
+
+						if _, ok := newItem.Applications[applicationName]; !ok {
+							newItem.Applications[applicationName] = struct{}{}
+						}
+					}
+				case "description":
+					// If a specific description for this item is not present use the default prometheus description
+					if _, ok := rule.Annotations["zabbix_description"]; !ok {
+						newItem.Description = v
+					}
+
+					// If a specific description for this trigger is not present use the default prometheus description
+					// Note that trigger "description" are called "comments" in the Zabbix API
+					if _, ok := rule.Annotations["zabbix_trigger_description"]; !ok {
+						newTrigger.Comments = v
+					}
+				case "zabbix_description":
+					newItem.Description = v
+				case "zabbix_history":
+					newItem.History = v
+				case "zabbix_trend":
+					newItem.Trends = v
+				case "zabbix_trapper_hosts":
+					newItem.TrapperHosts = v
+				case "summary":
+					// Note that trigger "name" is called "description" in the Zabbix API
+					if _, ok := rule.Annotations["zabbix_trigger_name"]; !ok {
+						newTrigger.Description = v
+					}
+				case "zabbix_trigger_name":
+					newTrigger.Description = v
+				case "zabbix_trigger_description":
+					newTrigger.Comments = v
+				case "zabbix_trigger_severity":
+					newTrigger.Priority = GetZabbixPriority(v)
+				default:
+					continue
+				}
+			}
+
+			// If no applications are found in the rule, add the default application declared in the configuration
+			if len(newItem.Applications) == 0 {
+				newHost.AddApplication(&CustomApplication{
+					State: StateNew,
+					Application: zabbix.Application{
+						Name: hostConfig.ItemDefaultApplication,
+					},
+				})
+				newItem.Applications[hostConfig.ItemDefaultApplication] = struct{}{}
+			}
+
+			log.Debugf("Item from Prometheus: %+v", newItem)
+			newHost.AddItem(newItem)
+
+			log.Debugf("Trigger from Prometheus: %+v", newTrigger)
+			newHost.AddTrigger(newTrigger)
+
+			// Add the special "No Data" trigger if requested
+			if delay, ok := rule.Annotations["zabbix_trigger_nodata"]; ok {
+				noDataTrigger := &CustomTrigger{
+					State:   StateNew,
+					Trigger: newTrigger.Trigger,
+				}
+
+				noDataTrigger.Trigger.Description = "No Data for" + newTrigger.Trigger.Description
+				noDataTrigger.Trigger.Expression = fmt.Sprintf("{%s:%s.nodata(%s)}", newHost.Name, key, delay)
+				log.Debugf("Trigger from Prometheus: %+v", noDataTrigger)
+				newHost.AddTrigger(noDataTrigger)
+			}
+		}
+		log.Debugf("Host from Prometheus: %+v", newHost)
+		p.AddHost(newHost)
+	}
+}
+
+// Update created hosts with the current state in Zabbix
+func (p *Provisioner) FillFromZabbix() {
+
+	hostNames := make([]string, len(p.Config.ZabbixHosts))
+	hostGroupNames := []string{}
+	for i, _ := range p.Config.ZabbixHosts {
+		hostNames[i] = p.Config.ZabbixHosts[i].Name
+		hostGroupNames = append(hostGroupNames, p.Config.ZabbixHosts[i].HostGroups...)
 	}
 
-	err = p.Api.HostsCreate(newHosts)
+	// Getting Zabbix HostGroups
+	zabbixHostGroups, err := p.Api.HostGroupsGet(zabbix.Params{
+		"output": "extend",
+		"filter": map[string][]string{
+			"name": hostGroupNames,
+		},
+	})
+
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	log.Info("Host created")
-	return newHosts[0]
-}
-
-func (p *Provisioner) getItemsFromPrometheusRules(host zabbix.Host, rules []PrometheusRule) Items {
-	var items Items
-	for _, r := range rules {
-		if _, ok := r.Annotations["zabbix"]; ok {
-			item := NewFromPrometheusRule(r, host, p.ZabbixItemDefaultHistory, p.ZabbixItemDefaultTrends, p.ZabbixItemDefaultTrapperHosts)
-			items = append(items, *item)
-			log.Infof("Item from Prometheus: %s", item.Item.Name)
-		}
+	for _, zabbixHostGroup := range zabbixHostGroups {
+		p.AddHostGroup(&CustomHostGroup{
+			State:     StateOld,
+			HostGroup: zabbixHostGroup,
+		})
 	}
-	sort.Sort(items)
-	return items
-}
 
-func (p *Provisioner) getItemsFromZabbixItems(host zabbix.Host, zabbixItems zabbix.Items) Items {
-	var items Items
-	for _, i := range zabbixItems {
-		applications, err := p.Api.ApplicationsGet(zabbix.Params{
+	// Getting Zabbix Hosts
+	zabbixHosts, err := p.Api.HostsGet(zabbix.Params{
+		"output": "extend",
+		"selectInventory": []string{
+			"tag",
+			"deployment_status",
+		},
+		"filter": map[string][]string{
+			"host": hostNames,
+		},
+	})
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, zabbixHost := range zabbixHosts {
+
+		// Getting Zabbix HostGroups
+		zabbixHostGroups, err := p.Api.HostGroupsGet(zabbix.Params{
 			"output":  "extend",
-			"hostids": host.HostId,
-			"itemids": i.ItemId,
+			"hostids": zabbixHost.HostId,
 		})
 
-		if err != nil {
-			log.Errorf("Can't find applications for item '%s'", i.Name)
-		}
-
-		triggers, err := p.Api.TriggersGet(zabbix.Params{
-			"output":  "extend",
-			"hostids": host.HostId,
-			"itemids": i.ItemId,
-		})
-
-		if err != nil {
-			log.Fatalf("Can't find triggers for item '%s'", i.Name)
-		}
-
-		item := NewFromZabbixItem(i, applications, triggers[0])
-		items = append(items, *item)
-		log.Infof("Item from Zabbix: %s", item.Item.Name)
-	}
-
-	sort.Sort(items)
-	return items
-}
-
-func (p *Provisioner) syncItems(wantedItems Items, existingItems Items) {
-
-	itemsToCreate := Items{}
-	itemsToDelete := Items{}
-
-	i, j := 0, 0
-	for i < len(wantedItems) && j < len(existingItems) {
-
-		nameResult, otherResult := wantedItems[i].Compare(existingItems[j])
-		if nameResult < 0 {
-			itemsToCreate = append(itemsToCreate, wantedItems[i])
-			i++
-		} else if nameResult > 0 {
-			itemsToDelete = append(itemsToDelete, existingItems[j])
-			j++
-		} else {
-			if !otherResult {
-				itemsToCreate = append(itemsToCreate, wantedItems[i])
-				itemsToDelete = append(itemsToDelete, existingItems[j])
-			}
-			j++
-			i++
-		}
-	}
-
-	if i < len(wantedItems) {
-		itemsToCreate = append(itemsToCreate, wantedItems[i:]...)
-	} else {
-		itemsToDelete = append(itemsToDelete, existingItems[j:]...)
-	}
-
-	if len(itemsToDelete) != 0 {
-		for _, i := range itemsToDelete {
-			log.Infof("Item to delete in Zabbix: %s", i.Item.Name)
-		}
-		err := p.Api.ItemsDelete(itemsToDelete.Items())
 		if err != nil {
 			log.Fatal(err)
 		}
-	} else {
-		log.Info("Nothing to delete")
-	}
 
-	if len(itemsToCreate) != 0 {
-		for _, i := range itemsToCreate {
-			log.Infof("Item to create in Zabbix: %s", i.Item.Name)
+		hostGroups := make(map[string]struct{}, len(zabbixHostGroups))
+		for _, zabbixHostGroup := range zabbixHostGroups {
+			hostGroups[zabbixHostGroup.Name] = struct{}{}
 		}
-		err := p.Api.ItemsCreate(itemsToCreate.Items())
-		if err != nil {
-			log.Fatalf("Problem while creating items: %s", err)
-		}
-		err = p.Api.TriggersCreate(itemsToCreate.Triggers())
-		if err != nil {
-			log.Fatalf("Problem while creating triggers: %s", err)
-		}
-	} else {
-		log.Info("Nothing to create")
-	}
 
+		// Remove hostid because the Zabbix API add it automatically and it breaks the comparison
+		// between new/old hosts
+		delete(zabbixHost.Inventory, "hostid")
+
+		oldHost := p.AddHost(&CustomHost{
+			State:        StateOld,
+			Host:         zabbixHost,
+			HostGroups:   hostGroups,
+			Items:        map[string]*CustomItem{},
+			Applications: map[string]*CustomApplication{},
+			Triggers:     map[string]*CustomTrigger{},
+		})
+		log.Debugf("Host from Zabbix: %+v", oldHost)
+
+		// Getting host applications
+		zabbixApplications, err := p.Api.ApplicationsGet(zabbix.Params{
+			"output":  "extend",
+			"hostids": oldHost.HostId,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, zabbixApplication := range zabbixApplications {
+			oldHost.AddApplication(&CustomApplication{
+				State:       StateOld,
+				Application: zabbixApplication,
+			})
+		}
+
+		// Getting Zabbix Items
+		zabbixItems, err := p.Api.ItemsGet(zabbix.Params{
+			"output":  "extend",
+			"hostids": oldHost.Host.HostId,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, zabbixItem := range zabbixItems {
+
+			newItem := &CustomItem{
+				State: StateOld,
+				Item:  zabbixItem,
+			}
+
+			// Getting applications linkd to that item
+			zabbixApplications, err := p.Api.ApplicationsGet(zabbix.Params{
+				"output":  "extend",
+				"itemids": zabbixItem.ItemId,
+			})
+
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			newItem.Applications = make(map[string]struct{}, len(zabbixApplications))
+			for _, zabbixApplication := range zabbixApplications {
+				newItem.Applications[zabbixApplication.Name] = struct{}{}
+			}
+
+			log.Debugf("Item from Zabbix: %+v", newItem)
+			oldHost.AddItem(newItem)
+		}
+
+		// Get all the triggers for that host
+		zabbixTriggers, err := p.Api.TriggersGet(zabbix.Params{
+			"output":           "extend",
+			"hostids":          oldHost.Host.HostId,
+			"expandExpression": true,
+		})
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, zabbixTrigger := range zabbixTriggers {
+			newTrigger := &CustomTrigger{
+				State:   StateOld,
+				Trigger: zabbixTrigger,
+			}
+
+			log.Debugf("Triggers from Zabbix: %+v", newTrigger)
+			oldHost.AddTrigger(newTrigger)
+		}
+	}
 }
 
-func hostGroupIds(hg zabbix.HostGroups) zabbix.HostGroupIds {
-	ids := make([]zabbix.HostGroupId, len(hg))
-	for i, group := range hg {
-		ids[i] = zabbix.HostGroupId{group.GroupId}
+func (p *Provisioner) ApplyChanges() {
+
+	hostGroupsByState := p.GetHostGroupsByState()
+	if len(hostGroupsByState[StateNew]) != 0 {
+		log.Debugf("Creating HostGroups: %+v\n", hostGroupsByState[StateNew])
+		err := p.Api.HostGroupsCreate(hostGroupsByState[StateNew])
+		if err != nil {
+			log.Fatalln("Creating hostgroups:", err)
+		}
 	}
-	return ids
+
+	// Make sure we update ids for the newly created host groups
+	p.PropagateCreatedHostGroups(hostGroupsByState[StateNew])
+
+	hostsByState := p.GetHostsByState()
+	if len(hostsByState[StateNew]) != 0 {
+		log.Debugf("Creating Hosts: %+v\n", hostsByState[StateNew])
+		err := p.Api.HostsCreate(hostsByState[StateNew])
+		if err != nil {
+			log.Fatalln("Creating host:", err)
+		}
+	}
+
+	// Make sure we update ids for the newly created hosts
+	p.PropagateCreatedHosts(hostsByState[StateNew])
+
+	if len(hostsByState[StateUpdated]) != 0 {
+		log.Debugf("Updating Hosts: %+v\n", hostsByState[StateUpdated])
+		err := p.Api.HostsUpdate(hostsByState[StateUpdated])
+		if err != nil {
+			log.Fatalln("Updating host:", err)
+		}
+	}
+
+	//if len(hostsByState[StateOld]) != 0 {
+	//	log.Debugf("Deleting Hosts: %+v\n", hostsByState[StateOld])
+	//	err := p.Api.HostsDelete(hostsByState[StateOld])
+	//	if err != nil {
+	//		log.Fatalln("Deleting host:", err)
+	//	}
+	//}
+
+	//if len(hostGroupsByState[StateOld]) != 0 {
+	//	log.Debugf("Deleting HostGroups: %+v\n", hostGroupsByState[StateOld])
+	//	err := p.Api.HostGroupsDelete(hostGroupsByState[StateOld])
+	//	if err != nil {
+	//		log.Fatalln("Deleting hostgroups:", err)
+	//	}
+	//}
+
+	for _, host := range p.Hosts {
+
+		log.Infoln("Updating host:", host.Name)
+
+		applicationsByState := host.GetApplicationsByState()
+		if len(applicationsByState[StateOld]) != 0 {
+			log.Debugf("Deleting applications: %+v\n", applicationsByState[StateOld])
+			err := p.Api.ApplicationsDelete(applicationsByState[StateOld])
+			if err != nil {
+				log.Fatalln("Deleting applications:", err)
+			}
+		}
+
+		if len(applicationsByState[StateNew]) != 0 {
+			log.Debugf("Creating applications: %+v\n", applicationsByState[StateNew])
+			err := p.Api.ApplicationsCreate(applicationsByState[StateNew])
+			if err != nil {
+				log.Fatalln("Creating applications:", err)
+			}
+		}
+		host.PropagateCreatedApplications(applicationsByState[StateNew])
+
+		itemsByState := host.GetItemsByState()
+		triggersByState := host.GetTriggersByState()
+
+		if len(triggersByState[StateOld]) != 0 {
+			log.Debugf("Deleting triggers: %+v\n", triggersByState[StateOld])
+			err := p.Api.TriggersDelete(triggersByState[StateOld])
+			if err != nil {
+				log.Fatalln("Deleting triggers:", err)
+			}
+		}
+
+		if len(itemsByState[StateOld]) != 0 {
+			log.Debugf("Deleting items: %+v\n", itemsByState[StateOld])
+			err := p.Api.ItemsDelete(itemsByState[StateOld])
+			if err != nil {
+				log.Fatalln("Deleting items:", err)
+			}
+		}
+
+		if len(itemsByState[StateUpdated]) != 0 {
+			log.Debugf("Updating items: %+v\n", itemsByState[StateUpdated])
+			err := p.Api.ItemsUpdate(itemsByState[StateUpdated])
+			if err != nil {
+				log.Fatalln("Updating items:", err)
+			}
+		}
+
+		if len(triggersByState[StateUpdated]) != 0 {
+			log.Debugf("Updating triggers: %+v\n", triggersByState[StateUpdated])
+			err := p.Api.TriggersUpdate(triggersByState[StateUpdated])
+			if err != nil {
+				log.Fatalln("Updating triggers:", err)
+			}
+		}
+
+		if len(itemsByState[StateNew]) != 0 {
+			log.Debugf("Creating items: %+v\n", itemsByState[StateNew])
+			err := p.Api.ItemsCreate(itemsByState[StateNew])
+			if err != nil {
+				log.Fatalln("Creating items:", err)
+			}
+		}
+
+		if len(triggersByState[StateNew]) != 0 {
+			log.Debugf("Creating triggers: %+v\n", triggersByState[StateNew])
+			err := p.Api.TriggersCreate(triggersByState[StateNew])
+			if err != nil {
+				log.Fatalln("Creating triggers:", err)
+			}
+		}
+	}
+
 }

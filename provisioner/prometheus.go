@@ -2,6 +2,7 @@ package provisioner
 
 import (
 	"encoding/json"
+	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
