@@ -1,7 +1,7 @@
 package provisioner
 
 import (
-	"github.com/gmauleon/alertmanager-zabbix-provisioner/zabbix"
+	"github.com/gmauleon/zabbix-client"
 	log "github.com/sirupsen/logrus"
 	"strings"
 )
