@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: alertmanager-zabbix-provisioner-config
+  namespace: monitoring
+data:
+  config.yaml: |+
+    rulesUrl: http://prometheus:9090/rules
+    rulesPollingTime: 3600
+    zabbixApiUrl: https://myzabbix.local/zabbix/api_jsonrpc.php
+    zabbixApiCAFile: /etc/provisioner/ca.pem
+    zabbixKeyPrefix: prometheus
+    zabbixHosts:
+      - name: myhostname
+        selector:
+          zabbix: myvalue
+        hostGroups:
+          - kubernetes
+          - prometheus
+        tag: MYTAG
+        deploymentStatus: 0
+        itemDefaultApplication: prometheus
+        itemDefaultHistory: 7d
+        itemDefaultTrends: 90d 
+        itemDefaultTrapperHosts: 0.0.0.0/32
+  ca.pem: |+
+    your_ca_bundle_here

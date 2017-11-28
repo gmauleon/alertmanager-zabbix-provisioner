@@ -1,0 +1,60 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: alertmanager-zabbix-provisioner
+  namespace: monitoring
+spec:
+  selector:
+    app: alertmanager-zabbix-provisioner
+  type: ClusterIP
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8080
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: alertmanager-zabbix-provisioner
+  namespace: monitoring
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: alertmanager-zabbix-provisioner
+    spec:
+      restartPolicy: Always
+      containers:
+      - name: provisioner
+        image: gmauleon/alertmanager-zabbix-provisioner:0.3.0
+        imagePullPolicy: Always
+        ports:
+        - name: http
+          protocol: TCP
+          containerPort: 8080
+        env:
+        - name: ZABBIX_API_USER
+          valueFrom:
+            secretKeyRef:
+              name: alertmanager-zabbix-provisioner-secret
+              key: zabbixApiUser
+        - name: ZABBIX_API_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: alertmanager-zabbix-provisioner-secret
+              key: zabbixApiPassword
+        resources:
+          requests:
+            memory: 10Mi
+            cpu: 0.1
+          limits:
+            memory: 10Mi
+            cpu: 0.1
+        volumeMounts:
+        - mountPath: /etc/provisioner/
+          name: alertmanager-zabbix-provisioner-config
+      volumes:
+      - name: alertmanager-zabbix-provisioner-config
+        configMap:
+          name: alertmanager-zabbix-provisioner-config

@@ -31,7 +31,7 @@ zabbixHosts:
       - kubernetes
       - prometheus
     # tag and deploymentStatus are inventory fields currently supported for an host
-    tag: RDV
+    tag: MYTAG
     deploymentStatus: 0
     # itemDefault* below, defines item values when not specified in a rule
     itemDefaultApplication: prometheus
