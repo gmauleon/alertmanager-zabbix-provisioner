@@ -16,20 +16,36 @@ zabbixApiUser: user
 # This can also be set via the environment variable ZABBIX_API_PASSWORD
 zabbixApiPassword: password
 
-# Items key prefix, keys will be zabbixKeyPrefix.alertname
+# Zabbix items key prefix, keys will be zabbixKeyPrefix.alertname
 zabbixKeyPrefix: prometheus
 
-# Name of the host that will be created
-zabbixHost: kubernetes-cluster-prometheus
-
-# List of host groups for the generated host
-zabbixHostGroups:
-  - Kubernetes
-  - Prometheus
-
-# For zabbix 2.x you have to put those in days like 7 or 90
-zabbixItemDefaultHistory: 7d
-zabbixItemDefaultTrends: 90d
-
-# Hosts permitted to send data (your webhook external CIDR, default is from everywhere)
-zabbixItemDefaultTrapperHosts: 0.0.0.0/32
+# List of host configuration
+zabbixHosts:
+  # Name of the host in zabbix
+  - name: gmauleon-test01
+    # Key/Value pairs that must be present on a prometheus rule in order for it to be selected for that host
+    selector:
+      zabbix: gmauleon-test01
+    # List of host groups the host will belong to
+    hostGroups:
+      - kubernetes
+      - prometheus
+    # tag and deploymentStatus are inventory fields currently supported for an host
+    tag: RDV
+    deploymentStatus: 0
+    # itemDefault* below, defines item values when not specified in a rule
+    itemDefaultApplication: prometheus
+    # For history and trends in zabbix 2.x you have to put those in days like 7 or 90
+    itemDefaultHistory: 5d
+    itemDefaultTrends: 190d
+    itemDefaultTrapperHosts: 0.0.0.0/32 # Hosts permitted to send data (your webhook external CIDR, default is from everywhere)
+  - name: gmauleon-test02
+    selector:
+      zabbix: gmauleon-test02
+    hostGroups:
+      - kubernetes
+      - gmauleon
+    itemDefaultApplication: test
+    itemDefaultHistory: 7d
+    itemDefaultTrends: 190d
+    itemDefaultTrapperHosts: 0.0.0.0/32

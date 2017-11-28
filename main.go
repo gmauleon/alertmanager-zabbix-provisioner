@@ -3,17 +3,16 @@ package main
 import (
 	"flag"
 	"github.com/gmauleon/alertmanager-zabbix-provisioner/provisioner"
-	"github.com/sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"os"
 )
 
-var log = logrus.WithField("context", "main")
-
 func main() {
 
-	logrus.SetOutput(os.Stdout)
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetFormatter(&logrus.TextFormatter{DisableColors: true})
+	log.SetOutput(os.Stdout)
+	log.SetLevel(log.InfoLevel)
+	//log.SetFormatter(&log.JSONFormatter{})
+	log.SetFormatter(&log.TextFormatter{DisableColors: true})
 
 	configFileName := flag.String("config", "./config.yaml", "path to the configuration file")
 	flag.Parse()
@@ -22,6 +21,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Debug(cfg)
 
 	provisioner.New(cfg).Start()
 }
