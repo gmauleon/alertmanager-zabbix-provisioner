@@ -316,7 +316,7 @@ func (p *Provisioner) FillFromPrometheus() {
 					Trigger: newTrigger.Trigger,
 				}
 
-				noDataTrigger.Trigger.Description = "No Data for" + newTrigger.Trigger.Description
+				noDataTrigger.Trigger.Description = fmt.Sprintf("%s - no data for the last %s seconds", newTrigger.Trigger.Description, delay)
 				noDataTrigger.Trigger.Expression = fmt.Sprintf("{%s:%s.nodata(%s)}", newHost.Name, key, delay)
 				log.Debugf("Trigger from Prometheus: %+v", noDataTrigger)
 				newHost.AddTrigger(noDataTrigger)
