@@ -22,6 +22,6 @@ data:
         itemDefaultApplication: prometheus
         itemDefaultHistory: 7d
         itemDefaultTrends: 90d 
-        itemDefaultTrapperHosts: 0.0.0.0/32
+        itemDefaultTrapperHosts: 0.0.0.0/0
   ca.pem: |+
     your_ca_bundle_here

@@ -38,7 +38,7 @@ zabbixHosts:
     # For history and trends in zabbix 2.x you have to put those in days like 7 or 90
     itemDefaultHistory: 5d
     itemDefaultTrends: 190d
-    itemDefaultTrapperHosts: 0.0.0.0/32 # Hosts permitted to send data (your webhook external CIDR, default is from everywhere)
+    itemDefaultTrapperHosts: 0.0.0.0/0 # Hosts permitted to send data (your webhook external CIDR, default is from everywhere)
   - name: gmauleon-test02
     selector:
       zabbix: gmauleon-test02
@@ -48,4 +48,4 @@ zabbixHosts:
     itemDefaultApplication: test
     itemDefaultHistory: 7d
     itemDefaultTrends: 190d
-    itemDefaultTrapperHosts: 0.0.0.0/32
+    itemDefaultTrapperHosts: 0.0.0.0/0
