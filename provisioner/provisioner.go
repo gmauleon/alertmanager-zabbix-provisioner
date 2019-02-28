@@ -437,7 +437,7 @@ func (p *Provisioner) FillFromZabbix() {
 				Item:  zabbixItem,
 			}
 
-			// Getting applications linkd to that item
+			// Getting applications linked to that item
 			zabbixApplications, err := p.Api.ApplicationsGet(zabbix.Params{
 				"output":  "extend",
 				"itemids": zabbixItem.ItemId,

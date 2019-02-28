@@ -5,7 +5,7 @@
 The provisioner will connect to your prometheus to get the current configured rules and will create a host/items/triggers accordingly  
 Data for those items can then be sent via a webhook: https://github.com/gmauleon/alertmanager-zabbix-webhook
 
-The concept is to use annotations in prometheus rules, along with a provisionner configuration file to automatically create everything in Zabbix
+The concept is to use annotations in prometheus rules, along with a provisioner configuration file to automatically create everything in Zabbix
 
 ## Howto
 
@@ -76,5 +76,5 @@ For now a minimal scraper, parse the html page that expose rules on your Prometh
 Note that the HTML page exposed by prometheus currently does not resolve variables, so it's better to use the dedicated Zabbix annotations not to have variables names in your Zabbix items...  
 Ultimately, this will be replaced by the rules API endpoint, see https://github.com/prometheus/prometheus/pull/2600  
 
-Since host groups and hosts are declared in the provisionner configuration, there will not be deleted automatically (since I don't have any state saved anywhere).  
+Since host groups and hosts are declared in the provisioner configuration, there will not be deleted automatically (since I don't have any state saved anywhere).  
 So you'll have to delete those by hands in Zabbix if you remove some
