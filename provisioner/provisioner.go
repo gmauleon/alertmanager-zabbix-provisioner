@@ -16,11 +16,11 @@ import (
 
 type Provisioner struct {
 	Api    *zabbix.API
-	Config ProvisionerConfig
+	Config Config
 	*CustomZabbix
 }
 
-type ProvisionerConfig struct {
+type Config struct {
 	RulesUrl             string `yaml:"rulesUrl"`
 	RulesPollingInterval int    `yaml:"rulesPollingTime"`
 
@@ -44,7 +44,7 @@ type HostConfig struct {
 	ItemDefaultTrapperHosts string            `yaml:"itemDefaultTrapperHosts"`
 }
 
-func New(cfg *ProvisionerConfig) *Provisioner {
+func New(cfg *Config) *Provisioner {
 
 	// Use the correct CA bundle if provided
 	transport := http.DefaultTransport
@@ -80,7 +80,7 @@ func New(cfg *ProvisionerConfig) *Provisioner {
 
 }
 
-func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
+func ConfigFromFile(filename string) (cfg *Config, err error) {
 	log.Infof("loading configuration at '%s'", filename)
 	configFile, err := ioutil.ReadFile(filename)
 	if err != nil {
@@ -88,7 +88,7 @@ func ConfigFromFile(filename string) (cfg *ProvisionerConfig, err error) {
 	}
 
 	// Default values
-	config := ProvisionerConfig{
+	config := Config{
 		RulesUrl:             "https://127.0.0.1/prometheus/rules",
 		RulesPollingInterval: 3600,
 		ZabbixApiUrl:         "https://127.0.0.1/zabbix/api_jsonrpc.php",
