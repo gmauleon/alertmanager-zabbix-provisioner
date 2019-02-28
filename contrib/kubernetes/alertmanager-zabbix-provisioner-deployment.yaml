@@ -8,17 +8,20 @@ spec:
     app: alertmanager-zabbix-provisioner
   type: ClusterIP
   ports:
-    - name: http
-      protocol: TCP
-      port: 8080
+  - name: http
+    protocol: TCP
+    port: 8080
 ---
-apiVersion: extensions/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: alertmanager-zabbix-provisioner
   namespace: monitoring
 spec:
   replicas: 1
+  selector:
+    matchLabels:
+      app: alertmanager-zabbix-provisioner
   template:
     metadata:
       labels:
