@@ -331,8 +331,8 @@ func (p *Provisioner) FillFromPrometheus() {
 func (p *Provisioner) FillFromZabbix() {
 
 	hostNames := make([]string, len(p.Config.ZabbixHosts))
-	hostGroupNames := []string{}
-	for i, _ := range p.Config.ZabbixHosts {
+	var hostGroupNames []string
+	for i := range p.Config.ZabbixHosts {
 		hostNames[i] = p.Config.ZabbixHosts[i].Name
 		hostGroupNames = append(hostGroupNames, p.Config.ZabbixHosts[i].HostGroups...)
 	}

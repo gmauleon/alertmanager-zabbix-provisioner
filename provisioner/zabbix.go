@@ -154,26 +154,26 @@ func (z *CustomZabbix) AddHostGroup(hostGroup *CustomHostGroup) {
 	z.HostGroups[hostGroup.Name] = hostGroup
 }
 
-func (i *CustomHost) Equal(j *CustomHost) bool {
-	if i.Name != j.Name {
+func (host *CustomHost) Equal(j *CustomHost) bool {
+	if host.Name != j.Name {
 		return false
 	}
 
-	if len(i.HostGroups) != len(j.HostGroups) {
+	if len(host.HostGroups) != len(j.HostGroups) {
 		return false
 	}
 
-	for hostGroupName, _ := range i.HostGroups {
+	for hostGroupName := range host.HostGroups {
 		if _, ok := j.HostGroups[hostGroupName]; !ok {
 			return false
 		}
 	}
 
-	if len(i.Inventory) != len(j.Inventory) {
+	if len(host.Inventory) != len(j.Inventory) {
 		return false
 	}
 
-	for key, valueI := range i.Inventory {
+	for key, valueI := range host.Inventory {
 		if valueJ, ok := j.Inventory[key]; !ok {
 			return false
 		} else if valueJ != valueI {
@@ -209,7 +209,7 @@ func (i *CustomItem) Equal(j *CustomItem) bool {
 		return false
 	}
 
-	for appName, _ := range i.Applications {
+	for appName := range i.Applications {
 		if _, ok := j.Applications[appName]; !ok {
 			return false
 		}
@@ -241,14 +241,14 @@ func (i *CustomTrigger) Equal(j *CustomTrigger) bool {
 func (z *CustomZabbix) GetHostsByState() (hostByState map[State]zabbix.Hosts) {
 
 	hostByState = map[State]zabbix.Hosts{
-		StateNew:     zabbix.Hosts{},
-		StateOld:     zabbix.Hosts{},
-		StateUpdated: zabbix.Hosts{},
-		StateEqual:   zabbix.Hosts{},
+		StateNew:     {},
+		StateOld:     {},
+		StateUpdated: {},
+		StateEqual:   {},
 	}
 
 	for _, host := range z.Hosts {
-		for hostGroupName, _ := range host.HostGroups {
+		for hostGroupName := range host.HostGroups {
 			host.GroupIds = append(host.GroupIds, zabbix.HostGroupId{GroupId: z.HostGroups[hostGroupName].GroupId})
 		}
 		hostByState[host.State] = append(hostByState[host.State], host.Host)
@@ -261,10 +261,10 @@ func (z *CustomZabbix) GetHostsByState() (hostByState map[State]zabbix.Hosts) {
 func (z *CustomZabbix) GetHostGroupsByState() (hostGroupsByState map[State]zabbix.HostGroups) {
 
 	hostGroupsByState = map[State]zabbix.HostGroups{
-		StateNew:     zabbix.HostGroups{},
-		StateOld:     zabbix.HostGroups{},
-		StateUpdated: zabbix.HostGroups{},
-		StateEqual:   zabbix.HostGroups{},
+		StateNew:     {},
+		StateOld:     {},
+		StateUpdated: {},
+		StateEqual:   {},
 	}
 
 	for _, hostGroup := range z.HostGroups {
@@ -275,17 +275,17 @@ func (z *CustomZabbix) GetHostGroupsByState() (hostGroupsByState map[State]zabbi
 	return
 }
 
-func (zabbix *CustomZabbix) PropagateCreatedHosts(hosts zabbix.Hosts) {
+func (z *CustomZabbix) PropagateCreatedHosts(hosts zabbix.Hosts) {
 	for _, newHost := range hosts {
-		if host, ok := zabbix.Hosts[newHost.Name]; ok {
+		if host, ok := z.Hosts[newHost.Name]; ok {
 			host.HostId = newHost.HostId
 		}
 	}
 }
 
-func (zabbix *CustomZabbix) PropagateCreatedHostGroups(hostGroups zabbix.HostGroups) {
+func (z *CustomZabbix) PropagateCreatedHostGroups(hostGroups zabbix.HostGroups) {
 	for _, newHostGroup := range hostGroups {
-		if hostGroup, ok := zabbix.HostGroups[newHostGroup.Name]; ok {
+		if hostGroup, ok := z.HostGroups[newHostGroup.Name]; ok {
 			hostGroup.GroupId = newHostGroup.GroupId
 		}
 	}
@@ -301,16 +301,16 @@ func (host *CustomHost) PropagateCreatedApplications(applications zabbix.Applica
 func (host *CustomHost) GetItemsByState() (itemsByState map[State]zabbix.Items) {
 
 	itemsByState = map[State]zabbix.Items{
-		StateNew:     zabbix.Items{},
-		StateOld:     zabbix.Items{},
-		StateUpdated: zabbix.Items{},
-		StateEqual:   zabbix.Items{},
+		StateNew:     {},
+		StateOld:     {},
+		StateUpdated: {},
+		StateEqual:   {},
 	}
 
 	for _, item := range host.Items {
 		item.HostId = host.HostId
 		item.Item.ApplicationIds = []string{}
-		for appName, _ := range item.Applications {
+		for appName := range item.Applications {
 			item.Item.ApplicationIds = append(item.Item.ApplicationIds, host.Applications[appName].ApplicationId)
 		}
 		itemsByState[item.State] = append(itemsByState[item.State], item.Item)
@@ -323,10 +323,10 @@ func (host *CustomHost) GetItemsByState() (itemsByState map[State]zabbix.Items) 
 func (host *CustomHost) GetTriggersByState() (triggersByState map[State]zabbix.Triggers) {
 
 	triggersByState = map[State]zabbix.Triggers{
-		StateNew:     zabbix.Triggers{},
-		StateOld:     zabbix.Triggers{},
-		StateUpdated: zabbix.Triggers{},
-		StateEqual:   zabbix.Triggers{},
+		StateNew:     {},
+		StateOld:     {},
+		StateUpdated: {},
+		StateEqual:   {},
 	}
 
 	for _, trigger := range host.Triggers {
@@ -340,10 +340,10 @@ func (host *CustomHost) GetTriggersByState() (triggersByState map[State]zabbix.T
 func (host *CustomHost) GetApplicationsByState() (applicationsByState map[State]zabbix.Applications) {
 
 	applicationsByState = map[State]zabbix.Applications{
-		StateNew:     zabbix.Applications{},
-		StateOld:     zabbix.Applications{},
-		StateUpdated: zabbix.Applications{},
-		StateEqual:   zabbix.Applications{},
+		StateNew:     {},
+		StateOld:     {},
+		StateUpdated: {},
+		StateEqual:   {},
 	}
 
 	for _, application := range host.Applications {

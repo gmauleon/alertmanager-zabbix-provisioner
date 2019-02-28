@@ -43,7 +43,7 @@ func GetRulesFromURL(url string) []PrometheusRule {
 
 	var key string
 	var rule PrometheusRule
-	rules := []PrometheusRule{}
+	var rules []PrometheusRule
 
 	for {
 		tokenType := tokenizer.Next()
