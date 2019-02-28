@@ -6,6 +6,7 @@ import (
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 )
 
@@ -40,10 +41,12 @@ func GetRulesFromURL(url string) []PrometheusRule {
 	}
 
 	tokenizer := html.NewTokenizer(resp.Body)
+	indent := 2
 
 	var key string
 	var rule PrometheusRule
 	var rules []PrometheusRule
+	keyRegex := regexp.MustCompile("^(.+): (.+)$")
 
 	for {
 		tokenType := tokenizer.Next()
@@ -53,7 +56,7 @@ func GetRulesFromURL(url string) []PrometheusRule {
 			return rules
 		case html.TextToken:
 			str := string(tokenizer.Text())
-			if strings.HasPrefix(str, "alert") {
+			if strings.HasPrefix(str, "alert:") {
 				tokenizer.Next()
 				tokenizer.Next()
 				rule = PrometheusRule{
@@ -62,22 +65,32 @@ func GetRulesFromURL(url string) []PrometheusRule {
 				}
 				rules = append(rules, rule)
 				//log.Infof("Rule: %s", string(tokenizer.Text()))
-			} else if strings.Contains(str, "annotations") {
+			} else if strings.Contains(str, "annotations:") {
 				//log.Info(str)
-				raw := strings.SplitAfter(str, "annotations")
+				raw := strings.SplitAfter(str, "annotations:")
 				splits := strings.Split(raw[1], "\n  ")
 				//log.Info(splits)
-				for index, split := range splits {
-					trimmed := strings.Trim(split, " {}")
-					if len(trimmed) != 0 {
-						if index%2 == 0 {
-							replacer := strings.NewReplacer("=", "", " ", "", ",", "")
-							//log.Printf("Key: %s", replacer.Replace(trimmed))
-							key = replacer.Replace(trimmed)
-						} else {
-							//log.Printf("Value: %s", trimmed)
-							rule.Annotations[key] = trimmed
+				first := true
+				for _, split := range splits {
+					// remove trailing newline
+					text := strings.TrimRight(split, "\n")
+					if len(text) != 0 {
+						containKey := keyRegex.FindStringSubmatch(text)
+						if len(containKey) != 0 {
+							key = containKey[1]
+							text = containKey[2]
+							// remove trailing pipe added by yaml
+							text = strings.TrimLeft(text, "| ")
 						}
+						if !first {
+							text = strings.TrimPrefix(text, strings.Repeat(" ", indent))
+							// if that's not the first line, add extra space
+							if len(rule.Annotations[key]) != 0 {
+								text = " " + text
+							}
+						}
+						rule.Annotations[key] += text
+						first = false
 					}
 				}
 			}
