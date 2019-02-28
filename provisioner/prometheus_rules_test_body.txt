@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Prometheus Time Series Collection and Processing Server</title>
+    <link rel="shortcut icon" href="/static/img/favicon.ico?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3">
+    <script src="/static/vendor/js/jquery.min.js?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3"></script>
+    <script src="/static/vendor/bootstrap-3.3.1/js/bootstrap.min.js?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3"></script>
+
+    <link type="text/css" rel="stylesheet" href="/static/vendor/bootstrap-3.3.1/css/bootstrap.min.css?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3">
+    <link type="text/css" rel="stylesheet" href="/static/css/prometheus.css?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3">
+
+    <script>
+      var PATH_PREFIX = "";
+      var BUILD_VERSION = "62e591f928ddf6b3468308b7ac1de1c63aa7fcf3";
+      $(function () {
+        $('[data-toggle="tooltip"]').tooltip()
+      })
+    </script>
+
+
+<link type="text/css" rel="stylesheet" href="/static/css/rules.css?v=62e591f928ddf6b3468308b7ac1de1c63aa7fcf3">
+
+  </head>
+
+  <body>
+    <nav class="navbar navbar-inverse navbar-fixed-top">
+      <div class="container-fluid">
+        <div class="navbar-header">
+          <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+            <span class="sr-only">Toggle navigation</span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <a class="navbar-brand" href="/">Prometheus</a>
+        </div>
+        <div id="navbar" class="navbar-collapse collapse">
+          <ul class="nav navbar-nav navbar-left">
+
+
+            <li><a href="/alerts">Alerts</a></li>
+            <li><a href="/graph">Graph</a></li>
+            <li class="dropdown">
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">Status <span class="caret"></span></a>
+              <ul class="dropdown-menu">
+                <li><a href="/status">Runtime &amp; Build Information</a></li>
+                <li><a href="/flags">Command-Line Flags</a></li>
+                <li><a href="/config">Configuration</a></li>
+                <li><a href="/rules">Rules</a></li>
+                <li><a href="/targets">Targets</a></li>
+                <li><a href="/service-discovery">Service Discovery</a></li>
+              </ul>
+            </li>
+            <li>
+              <a href="https://prometheus.io/docs/prometheus/latest/getting_started/" target="_blank">Help</a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+
+  <div class="container-fluid">
+    <h2>Rules</h2>
+    <table class="table table-bordered">
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#alertmanager.rules" name="alertmanager.rules">alertmanager.rules</h2></td>
+            <td><h2>13.09s ago</h2></td>
+            <td><h2>945.5us</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22AlertmanagerConfigInconsistent%22%7D&g0.tab=1">AlertmanagerConfigInconsistent</a>
+expr: <a href="/graph?g0.expr=count_values+by%28service%29+%28%22config_hash%22%2C+alertmanager_config_hash%7Bjob%3D%22prometheus-operator-alertmanager%22%2Cnamespace%3D%22monitoring%22%7D%29+%2F+on%28service%29+group_left%28%29+label_replace%28prometheus_operator_spec_replicas%7Bcontroller%3D%22alertmanager%22%2Cjob%3D%22prometheus-operator-operator%22%2Cnamespace%3D%22monitoring%22%7D%2C+%22service%22%2C+%22%241%22%2C+%22name%22%2C+%22%28.%2A%29%22%29+%21%3D+1&g0.tab=1">count_values
+  by(service) (&#34;config_hash&#34;, alertmanager_config_hash{job=&#34;prometheus-operator-alertmanager&#34;,namespace=&#34;monitoring&#34;})
+  / on(service) group_left() label_replace(prometheus_operator_spec_replicas{controller=&#34;alertmanager&#34;,job=&#34;prometheus-operator-operator&#34;,namespace=&#34;monitoring&#34;},
+  &#34;service&#34;, &#34;$1&#34;, &#34;name&#34;, &#34;(.*)&#34;) != 1</a>
+for: 5m
+labels:
+  severity: critical
+annotations:
+  message: The configuration of the instances of the Alertmanager cluster `{{$labels.service}}`
+    are out of sync.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              13.091s ago
+            </td>
+            <td>589.8us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22AlertmanagerFailedReload%22%7D&g0.tab=1">AlertmanagerFailedReload</a>
+expr: <a href="/graph?g0.expr=alertmanager_config_last_reload_successful%7Bjob%3D%22prometheus-operator-alertmanager%22%2Cnamespace%3D%22monitoring%22%7D+%3D%3D+0&g0.tab=1">alertmanager_config_last_reload_successful{job=&#34;prometheus-operator-alertmanager&#34;,namespace=&#34;monitoring&#34;}
+  == 0</a>
+for: 10m
+labels:
+  severity: warning
+annotations:
+  message: Reloading Alertmanager&#39;s configuration has failed for {{ $labels.namespace
+    }}/{{ $labels.pod}}.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              13.09s ago
+            </td>
+            <td>145.1us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22AlertmanagerMembersInconsistent%22%7D&g0.tab=1">AlertmanagerMembersInconsistent</a>
+expr: <a href="/graph?g0.expr=alertmanager_cluster_members%7Bjob%3D%22prometheus-operator-alertmanager%22%2Cnamespace%3D%22monitoring%22%7D+%21%3D+on%28service%29+group_left%28%29+count+by%28service%29+%28alertmanager_cluster_members%7Bjob%3D%22prometheus-operator-alertmanager%22%2Cnamespace%3D%22monitoring%22%7D%29&g0.tab=1">alertmanager_cluster_members{job=&#34;prometheus-operator-alertmanager&#34;,namespace=&#34;monitoring&#34;}
+  != on(service) group_left() count by(service) (alertmanager_cluster_members{job=&#34;prometheus-operator-alertmanager&#34;,namespace=&#34;monitoring&#34;})</a>
+for: 5m
+labels:
+  severity: critical
+annotations:
+  message: Alertmanager has not found all other members of the cluster.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              13.09s ago
+            </td>
+            <td>192.8us</td>
+          </tr>
+
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#k8s.rules" name="k8s.rules">k8s.rules</h2></td>
+            <td><h2>27.462s ago</h2></td>
+            <td><h2>524ms</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace%3Acontainer_cpu_usage_seconds_total%3Asum_rate&g0.tab=1">namespace:container_cpu_usage_seconds_total:sum_rate</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%29+%28rate%28container_cpu_usage_seconds_total%7Bcontainer_name%21%3D%22%22%2Cimage%21%3D%22%22%2Cjob%3D%22kubelet%22%7D%5B5m%5D%29%29&g0.tab=1">sum
+  by(namespace) (rate(container_cpu_usage_seconds_total{container_name!=&#34;&#34;,image!=&#34;&#34;,job=&#34;kubelet&#34;}[5m]))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              27.462s ago
+            </td>
+            <td>91.61ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace_pod_name_container_name%3Acontainer_cpu_usage_seconds_total%3Asum_rate&g0.tab=1">namespace_pod_name_container_name:container_cpu_usage_seconds_total:sum_rate</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+pod_name%2C+container_name%29+%28rate%28container_cpu_usage_seconds_total%7Bcontainer_name%21%3D%22%22%2Cimage%21%3D%22%22%2Cjob%3D%22kubelet%22%7D%5B5m%5D%29%29&g0.tab=1">sum
+  by(namespace, pod_name, container_name) (rate(container_cpu_usage_seconds_total{container_name!=&#34;&#34;,image!=&#34;&#34;,job=&#34;kubelet&#34;}[5m]))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              27.37s ago
+            </td>
+            <td>95.93ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace%3Acontainer_memory_usage_bytes%3Asum&g0.tab=1">namespace:container_memory_usage_bytes:sum</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%29+%28container_memory_usage_bytes%7Bcontainer_name%21%3D%22%22%2Cimage%21%3D%22%22%2Cjob%3D%22kubelet%22%7D%29&g0.tab=1">sum
+  by(namespace) (container_memory_usage_bytes{container_name!=&#34;&#34;,image!=&#34;&#34;,job=&#34;kubelet&#34;})</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              27.274s ago
+            </td>
+            <td>85.68ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace_name%3Acontainer_cpu_usage_seconds_total%3Asum_rate&g0.tab=1">namespace_name:container_cpu_usage_seconds_total:sum_rate</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+label_name%29+%28sum+by%28namespace%2C+pod_name%29+%28rate%28container_cpu_usage_seconds_total%7Bcontainer_name%21%3D%22%22%2Cimage%21%3D%22%22%2Cjob%3D%22kubelet%22%7D%5B5m%5D%29%29+%2A+on%28namespace%2C+pod_name%29+group_left%28label_name%29+label_replace%28kube_pod_labels%7Bjob%3D%22kube-state-metrics%22%7D%2C+%22pod_name%22%2C+%22%241%22%2C+%22pod%22%2C+%22%28.%2A%29%22%29%29&g0.tab=1">sum
+  by(namespace, label_name) (sum by(namespace, pod_name) (rate(container_cpu_usage_seconds_total{container_name!=&#34;&#34;,image!=&#34;&#34;,job=&#34;kubelet&#34;}[5m]))
+  * on(namespace, pod_name) group_left(label_name) label_replace(kube_pod_labels{job=&#34;kube-state-metrics&#34;},
+  &#34;pod_name&#34;, &#34;$1&#34;, &#34;pod&#34;, &#34;(.*)&#34;))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              27.189s ago
+            </td>
+            <td>107.9ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace_name%3Acontainer_memory_usage_bytes%3Asum&g0.tab=1">namespace_name:container_memory_usage_bytes:sum</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+label_name%29+%28sum+by%28pod_name%2C+namespace%29+%28container_memory_usage_bytes%7Bcontainer_name%21%3D%22%22%2Cimage%21%3D%22%22%2Cjob%3D%22kubelet%22%7D%29+%2A+on%28namespace%2C+pod_name%29+group_left%28label_name%29+label_replace%28kube_pod_labels%7Bjob%3D%22kube-state-metrics%22%7D%2C+%22pod_name%22%2C+%22%241%22%2C+%22pod%22%2C+%22%28.%2A%29%22%29%29&g0.tab=1">sum
+  by(namespace, label_name) (sum by(pod_name, namespace) (container_memory_usage_bytes{container_name!=&#34;&#34;,image!=&#34;&#34;,job=&#34;kubelet&#34;})
+  * on(namespace, pod_name) group_left(label_name) label_replace(kube_pod_labels{job=&#34;kube-state-metrics&#34;},
+  &#34;pod_name&#34;, &#34;$1&#34;, &#34;pod&#34;, &#34;(.*)&#34;))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              27.081s ago
+            </td>
+            <td>102.4ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace_name%3Akube_pod_container_resource_requests_memory_bytes%3Asum&g0.tab=1">namespace_name:kube_pod_container_resource_requests_memory_bytes:sum</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+label_name%29+%28sum+by%28namespace%2C+pod%29+%28kube_pod_container_resource_requests_memory_bytes%7Bjob%3D%22kube-state-metrics%22%7D%29+%2A+on%28namespace%2C+pod%29+group_left%28label_name%29+label_replace%28kube_pod_labels%7Bjob%3D%22kube-state-metrics%22%7D%2C+%22pod_name%22%2C+%22%241%22%2C+%22pod%22%2C+%22%28.%2A%29%22%29%29&g0.tab=1">sum
+  by(namespace, label_name) (sum by(namespace, pod) (kube_pod_container_resource_requests_memory_bytes{job=&#34;kube-state-metrics&#34;})
+  * on(namespace, pod) group_left(label_name) label_replace(kube_pod_labels{job=&#34;kube-state-metrics&#34;},
+  &#34;pod_name&#34;, &#34;$1&#34;, &#34;pod&#34;, &#34;(.*)&#34;))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              26.979s ago
+            </td>
+            <td>13.88ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=namespace_name%3Akube_pod_container_resource_requests_cpu_cores%3Asum&g0.tab=1">namespace_name:kube_pod_container_resource_requests_cpu_cores:sum</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+label_name%29+%28sum+by%28namespace%2C+pod%29+%28kube_pod_container_resource_requests_cpu_cores%7Bjob%3D%22kube-state-metrics%22%7D+and+on%28pod%29+kube_pod_status_scheduled%7Bcondition%3D%22true%22%7D%29+%2A+on%28namespace%2C+pod%29+group_left%28label_name%29+label_replace%28kube_pod_labels%7Bjob%3D%22kube-state-metrics%22%7D%2C+%22pod_name%22%2C+%22%241%22%2C+%22pod%22%2C+%22%28.%2A%29%22%29%29&g0.tab=1">sum
+  by(namespace, label_name) (sum by(namespace, pod) (kube_pod_container_resource_requests_cpu_cores{job=&#34;kube-state-metrics&#34;}
+  and on(pod) kube_pod_status_scheduled{condition=&#34;true&#34;}) * on(namespace,
+  pod) group_left(label_name) label_replace(kube_pod_labels{job=&#34;kube-state-metrics&#34;},
+  &#34;pod_name&#34;, &#34;$1&#34;, &#34;pod&#34;, &#34;(.*)&#34;))</a>
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              26.965s ago
+            </td>
+            <td>26.53ms</td>
+          </tr>
+
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#kubernetes-apps" name="kubernetes-apps">kubernetes-apps</h2></td>
+            <td><h2>7.832s ago</h2></td>
+            <td><h2>44.06ms</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubePodCrashLooping%22%7D&g0.tab=1">KubePodCrashLooping</a>
+expr: <a href="/graph?g0.expr=rate%28kube_pod_container_status_restarts_total%7Bjob%3D%22kube-state-metrics%22%7D%5B15m%5D%29+%2A+60+%2A+5+%3E+0&g0.tab=1">rate(kube_pod_container_status_restarts_total{job=&#34;kube-state-metrics&#34;}[15m])
+  * 60 * 5 &gt; 0</a>
+for: 1h
+labels:
+  severity: critical
+annotations:
+  message: Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }})
+    is restarting {{ printf &#34;%.2f&#34; $value }} times / 5 minutes.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodcrashlooping
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.833s ago
+            </td>
+            <td>15.81ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubePodNotReady%22%7D&g0.tab=1">KubePodNotReady</a>
+expr: <a href="/graph?g0.expr=sum+by%28namespace%2C+pod%29+%28kube_pod_status_phase%7Bjob%3D%22kube-state-metrics%22%2Cphase%3D~%22Pending%7CUnknown%22%7D%29+%3E+0&g0.tab=1">sum
+  by(namespace, pod) (kube_pod_status_phase{job=&#34;kube-state-metrics&#34;,phase=~&#34;Pending|Unknown&#34;})
+  &gt; 0</a>
+for: 1h
+labels:
+  severity: critical
+annotations:
+  message: Pod {{ $labels.namespace }}/{{ $labels.pod }} has been in a non-ready state
+    for longer than an hour.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubepodnotready
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.817s ago
+            </td>
+            <td>21.71ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeDeploymentGenerationMismatch%22%7D&g0.tab=1">KubeDeploymentGenerationMismatch</a>
+expr: <a href="/graph?g0.expr=kube_deployment_status_observed_generation%7Bjob%3D%22kube-state-metrics%22%7D+%21%3D+kube_deployment_metadata_generation%7Bjob%3D%22kube-state-metrics%22%7D&g0.tab=1">kube_deployment_status_observed_generation{job=&#34;kube-state-metrics&#34;}
+  != kube_deployment_metadata_generation{job=&#34;kube-state-metrics&#34;}</a>
+for: 15m
+labels:
+  severity: critical
+annotations:
+  message: Deployment generation for {{ $labels.namespace }}/{{ $labels.deployment
+    }} does not match, this indicates that the Deployment has failed but has not been
+    rolled back.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedeploymentgenerationmismatch
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.795s ago
+            </td>
+            <td>2.72ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeDeploymentReplicasMismatch%22%7D&g0.tab=1">KubeDeploymentReplicasMismatch</a>
+expr: <a href="/graph?g0.expr=kube_deployment_spec_replicas%7Bjob%3D%22kube-state-metrics%22%7D+%21%3D+kube_deployment_status_replicas_available%7Bjob%3D%22kube-state-metrics%22%7D&g0.tab=1">kube_deployment_spec_replicas{job=&#34;kube-state-metrics&#34;}
+  != kube_deployment_status_replicas_available{job=&#34;kube-state-metrics&#34;}</a>
+for: 1h
+labels:
+  severity: critical
+annotations:
+  message: Deployment {{ $labels.namespace }}/{{ $labels.deployment }} has not matched
+    the expected number of replicas for longer than an hour.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedeploymentreplicasmismatch
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.793s ago
+            </td>
+            <td>2.608ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeStatefulSetReplicasMismatch%22%7D&g0.tab=1">KubeStatefulSetReplicasMismatch</a>
+expr: <a href="/graph?g0.expr=kube_statefulset_status_replicas_ready%7Bjob%3D%22kube-state-metrics%22%7D+%21%3D+kube_statefulset_status_replicas%7Bjob%3D%22kube-state-metrics%22%7D&g0.tab=1">kube_statefulset_status_replicas_ready{job=&#34;kube-state-metrics&#34;}
+  != kube_statefulset_status_replicas{job=&#34;kube-state-metrics&#34;}</a>
+for: 15m
+labels:
+  severity: critical
+annotations:
+  message: StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} has not matched
+    the expected number of replicas for longer than 15 minutes.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetreplicasmismatch
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>198.8us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeStatefulSetGenerationMismatch%22%7D&g0.tab=1">KubeStatefulSetGenerationMismatch</a>
+expr: <a href="/graph?g0.expr=kube_statefulset_status_observed_generation%7Bjob%3D%22kube-state-metrics%22%7D+%21%3D+kube_statefulset_metadata_generation%7Bjob%3D%22kube-state-metrics%22%7D&g0.tab=1">kube_statefulset_status_observed_generation{job=&#34;kube-state-metrics&#34;}
+  != kube_statefulset_metadata_generation{job=&#34;kube-state-metrics&#34;}</a>
+for: 15m
+labels:
+  severity: critical
+annotations:
+  message: StatefulSet generation for {{ $labels.namespace }}/{{ $labels.statefulset
+    }} does not match, this indicates that the StatefulSet has failed but has not
+    been rolled back.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetgenerationmismatch
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>167.7us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeStatefulSetUpdateNotRolledOut%22%7D&g0.tab=1">KubeStatefulSetUpdateNotRolledOut</a>
+expr: <a href="/graph?g0.expr=max+without%28revision%29+%28kube_statefulset_status_current_revision%7Bjob%3D%22kube-state-metrics%22%7D+unless+kube_statefulset_status_update_revision%7Bjob%3D%22kube-state-metrics%22%7D%29+%2A+%28kube_statefulset_replicas%7Bjob%3D%22kube-state-metrics%22%7D+%21%3D+kube_statefulset_status_replicas_updated%7Bjob%3D%22kube-state-metrics%22%7D%29&g0.tab=1">max
+  without(revision) (kube_statefulset_status_current_revision{job=&#34;kube-state-metrics&#34;}
+  unless kube_statefulset_status_update_revision{job=&#34;kube-state-metrics&#34;})
+  * (kube_statefulset_replicas{job=&#34;kube-state-metrics&#34;} != kube_statefulset_status_replicas_updated{job=&#34;kube-state-metrics&#34;})</a>
+for: 15m
+labels:
+  severity: critical
+annotations:
+  message: StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} update has
+    not been rolled out.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubestatefulsetupdatenotrolledout
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>334.6us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeDaemonSetRolloutStuck%22%7D&g0.tab=1">KubeDaemonSetRolloutStuck</a>
+expr: <a href="/graph?g0.expr=kube_daemonset_status_number_ready%7Bjob%3D%22kube-state-metrics%22%7D+%2F+kube_daemonset_status_desired_number_scheduled%7Bjob%3D%22kube-state-metrics%22%7D+%2A+100+%3C+100&g0.tab=1">kube_daemonset_status_number_ready{job=&#34;kube-state-metrics&#34;}
+  / kube_daemonset_status_desired_number_scheduled{job=&#34;kube-state-metrics&#34;}
+  * 100 &lt; 100</a>
+for: 15m
+labels:
+  severity: critical
+annotations:
+  message: Only {{ $value }}% of the desired Pods of DaemonSet {{ $labels.namespace
+    }}/{{ $labels.daemonset }} are scheduled and ready.
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetrolloutstuck
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>204.7us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeDaemonSetNotScheduled%22%7D&g0.tab=1">KubeDaemonSetNotScheduled</a>
+expr: <a href="/graph?g0.expr=kube_daemonset_status_desired_number_scheduled%7Bjob%3D%22kube-state-metrics%22%7D+-+kube_daemonset_status_current_number_scheduled%7Bjob%3D%22kube-state-metrics%22%7D+%3E+0&g0.tab=1">kube_daemonset_status_desired_number_scheduled{job=&#34;kube-state-metrics&#34;}
+  - kube_daemonset_status_current_number_scheduled{job=&#34;kube-state-metrics&#34;}
+  &gt; 0</a>
+for: 10m
+labels:
+  severity: warning
+annotations:
+  message: '{{ $value }} Pods of DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset
+    }} are not scheduled.'
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetnotscheduled
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>174.5us</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22KubeDaemonSetMisScheduled%22%7D&g0.tab=1">KubeDaemonSetMisScheduled</a>
+expr: <a href="/graph?g0.expr=kube_daemonset_status_number_misscheduled%7Bjob%3D%22kube-state-metrics%22%7D+%3E+0&g0.tab=1">kube_daemonset_status_number_misscheduled{job=&#34;kube-state-metrics&#34;}
+  &gt; 0</a>
+for: 10m
+labels:
+  severity: warning
+annotations:
+  message: '{{ $value }} Pods of DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset
+    }} are running where they are not supposed to run.'
+  runbook_url: https://github.com/kubernetes-monitoring/kubernetes-mixin/tree/master/runbook.md#alert-name-kubedaemonsetmisscheduled
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.79s ago
+            </td>
+            <td>91.23us</td>
+          </tr>
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#general.rules" name="general.rules">general.rules</h2></td>
+            <td><h2>7.368s ago</h2></td>
+            <td><h2>2.655ms</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22TargetDown%22%7D&g0.tab=1">TargetDown</a>
+expr: <a href="/graph?g0.expr=100+%2A+%28count+by%28job%29+%28up+%3D%3D+0%29+%2F+count+by%28job%29+%28up%29%29+%3E+10&g0.tab=1">100
+  * (count by(job) (up == 0) / count by(job) (up)) &gt; 10</a>
+for: 10m
+labels:
+  severity: warning
+annotations:
+  message: '{{ $value }}% of the {{ $labels.job }} targets are down.'
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.369s ago
+            </td>
+            <td>2.33ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22Watchdog%22%7D&g0.tab=1">Watchdog</a>
+expr: <a href="/graph?g0.expr=vector%281%29&g0.tab=1">vector(1)</a>
+labels:
+  severity: none
+annotations:
+  message: |
+    This is an alert meant to ensure that the entire alerting pipeline is functional.
+    This alert is always firing, therefore it should always be firing in Alertmanager
+    and always fire against a receiver. There are integrations with various notification
+    mechanisms that send a notification when this alert is not firing. For example the
+    &#34;DeadMansSnitch&#34; integration in PagerDuty.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              7.366s ago
+            </td>
+            <td>307.8us</td>
+          </tr>
+
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#kube-apiserver.rules" name="kube-apiserver.rules">kube-apiserver.rules</h2></td>
+            <td><h2>5.3s ago</h2></td>
+            <td><h2>216.5ms</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=cluster_quantile%3Aapiserver_request_latencies%3Ahistogram_quantile&g0.tab=1">cluster_quantile:apiserver_request_latencies:histogram_quantile</a>
+expr: <a href="/graph?g0.expr=histogram_quantile%280.99%2C+sum+without%28instance%2C+pod%29+%28rate%28apiserver_request_latencies_bucket%7Bjob%3D%22apiserver%22%7D%5B5m%5D%29%29%29+%2F+1e%2B06&g0.tab=1">histogram_quantile(0.99,
+  sum without(instance, pod) (rate(apiserver_request_latencies_bucket{job=&#34;apiserver&#34;}[5m])))
+  / 1e+06</a>
+labels:
+  quantile: "0.99"
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              5.3s ago
+            </td>
+            <td>73.32ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=cluster_quantile%3Aapiserver_request_latencies%3Ahistogram_quantile&g0.tab=1">cluster_quantile:apiserver_request_latencies:histogram_quantile</a>
+expr: <a href="/graph?g0.expr=histogram_quantile%280.9%2C+sum+without%28instance%2C+pod%29+%28rate%28apiserver_request_latencies_bucket%7Bjob%3D%22apiserver%22%7D%5B5m%5D%29%29%29+%2F+1e%2B06&g0.tab=1">histogram_quantile(0.9,
+  sum without(instance, pod) (rate(apiserver_request_latencies_bucket{job=&#34;apiserver&#34;}[5m])))
+  / 1e+06</a>
+labels:
+  quantile: "0.9"
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              5.227s ago
+            </td>
+            <td>74.22ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">record: <a href="/graph?g0.expr=cluster_quantile%3Aapiserver_request_latencies%3Ahistogram_quantile&g0.tab=1">cluster_quantile:apiserver_request_latencies:histogram_quantile</a>
+expr: <a href="/graph?g0.expr=histogram_quantile%280.5%2C+sum+without%28instance%2C+pod%29+%28rate%28apiserver_request_latencies_bucket%7Bjob%3D%22apiserver%22%7D%5B5m%5D%29%29%29+%2F+1e%2B06&g0.tab=1">histogram_quantile(0.5,
+  sum without(instance, pod) (rate(apiserver_request_latencies_bucket{job=&#34;apiserver&#34;}[5m])))
+  / 1e+06</a>
+labels:
+  quantile: "0.5"
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              5.153s ago
+            </td>
+            <td>68.94ms</td>
+          </tr>
+
+
+        <thead>
+          <tr>
+            <td colspan="3"><h2><a href="#kube-prometheus-node-alerting.rules" name="kube-prometheus-node-alerting.rules">kube-prometheus-node-alerting.rules</h2></td>
+            <td><h2>24.061s ago</h2></td>
+            <td><h2>1.518ms</h2></td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style="font-weight:bold">Rule</td>
+            <td style="font-weight:bold">State</td>
+            <td style="font-weight:bold">Error</td>
+            <td style="font-weight:bold">Last Evaluation</td>
+            <td style="font-weight:bold">Evaluation Time</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22NodeDiskRunningFull%22%7D&g0.tab=1">NodeDiskRunningFull</a>
+expr: '<a href="/graph?g0.expr=%28node%3Anode_filesystem_usage%3A+%3E+0.85%29+and+%28predict_linear%28node%3Anode_filesystem_avail%3A%5B6h%5D%2C+3600+%2A+24%29+%3C+0%29&g0.tab=1">(node:node_filesystem_usage:
+  &gt; 0.85) and (predict_linear(node:node_filesystem_avail:[6h], 3600 * 24) &lt;
+  0)</a>'
+for: 30m
+labels:
+  severity: warning
+annotations:
+  message: Device {{ $labels.device }} of node-exporter {{ $labels.namespace }}/{{
+    $labels.pod }} will be full within the next 24 hours.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              24.061s ago
+            </td>
+            <td>1.207ms</td>
+          </tr>
+
+          <tr>
+            <td class="rule_cell">alert: <a href="/graph?g0.expr=ALERTS%7Balertname%3D%22NodeDiskRunningFull%22%7D&g0.tab=1">NodeDiskRunningFull</a>
+expr: '<a href="/graph?g0.expr=%28node%3Anode_filesystem_usage%3A+%3E+0.85%29+and+%28predict_linear%28node%3Anode_filesystem_avail%3A%5B30m%5D%2C+3600+%2A+2%29+%3C+0%29&g0.tab=1">(node:node_filesystem_usage:
+  &gt; 0.85) and (predict_linear(node:node_filesystem_avail:[30m], 3600 * 2) &lt;
+  0)</a>'
+for: 10m
+labels:
+  severity: critical
+annotations:
+  message: Device {{ $labels.device }} of node-exporter {{ $labels.namespace }}/{{
+    $labels.pod }} will be full within the next 2 hours.
+</td>
+            <td class="state">
+              <span class="alert alert-success state_indicator text-uppercase">
+                ok
+              </span>
+            </td>
+            <td class="errors">
+
+            </td>
+            <td>
+              24.06s ago
+            </td>
+            <td>293.4us</td>
+          </tr>
+      </tbody>
+    </table>
+  </div>
+
+  </body>
+</html>
+
+
+
