@@ -160,6 +160,7 @@ func (p *Provisioner) IsMatching(config HostConfig, rule PrometheusRule) bool {
 func (p *Provisioner) FillFromPrometheus() {
 
 	rules := GetRulesFromURL(p.Config.RulesUrl)
+	log.Debugf("Rules from Prometheus: %+v", rules)
 
 	for _, hostConfig := range p.Config.ZabbixHosts {
 

@@ -53,7 +53,7 @@ func GetRulesFromURL(url string) []PrometheusRule {
 			return rules
 		case html.TextToken:
 			str := string(tokenizer.Text())
-			if strings.HasPrefix(str, "ALERT") {
+			if strings.HasPrefix(str, "alert") {
 				tokenizer.Next()
 				tokenizer.Next()
 				rule = PrometheusRule{
@@ -62,10 +62,10 @@ func GetRulesFromURL(url string) []PrometheusRule {
 				}
 				rules = append(rules, rule)
 				//log.Infof("Rule: %s", string(tokenizer.Text()))
-			} else if strings.Contains(str, "ANNOTATIONS") {
+			} else if strings.Contains(str, "annotations") {
 				//log.Info(str)
-				raw := strings.SplitAfter(str, "ANNOTATIONS")
-				splits := strings.Split(raw[1], "\"")
+				raw := strings.SplitAfter(str, "annotations")
+				splits := strings.Split(raw[1], "\n  ")
 				//log.Info(splits)
 				for index, split := range splits {
 					trimmed := strings.Trim(split, " {}")
