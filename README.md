@@ -1,5 +1,15 @@
 [![Build Status](https://travis-ci.org/gmauleon/alertmanager-zabbix-provisioner.svg?branch=master)](https://travis-ci.org/gmauleon/alertmanager-zabbix-provisioner)
 
+
+# DEPRECATED
+
+Hey guys, I don`t have much time to properly work on this project anymore since I'm not using Zabbix in my pipelines as of late.
+I would gladely point/link to a fork if you guys have a maintained and living project for that.
+Thanks Guys. And sorry about that.
+
+
+
+
 ## alertmanager-zabbix-provisioner
 
 The provisioner will connect to your prometheus to get the current configured rules and will create a host/items/triggers accordingly  
